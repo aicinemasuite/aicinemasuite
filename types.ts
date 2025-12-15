@@ -7,19 +7,20 @@ declare global {
   
   // File System Access API
   interface Window {
-    showSaveFilePicker: (options?: any) => Promise<FileSystemFileHandle>;
-    showOpenFilePicker: (options?: any) => Promise<FileSystemFileHandle[]>;
+    showSaveFilePicker: (options?: any) => Promise<LocalFileHandle>;
+    showOpenFilePicker: (options?: any) => Promise<LocalFileHandle[]>;
   }
 }
 
-export interface FileSystemFileHandle {
+// Renamed to avoid collision with standard lib 'FileSystemFileHandle'
+export interface LocalFileHandle {
   kind: 'file';
   name: string;
   getFile: () => Promise<File>;
-  createWritable: () => Promise<FileSystemWritableFileStream>;
+  createWritable: () => Promise<LocalFileSystemWritableFileStream>;
 }
 
-interface FileSystemWritableFileStream extends WritableStream {
+interface LocalFileSystemWritableFileStream extends WritableStream {
   write: (data: any) => Promise<void>;
   close: () => Promise<void>;
 }

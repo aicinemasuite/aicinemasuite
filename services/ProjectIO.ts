@@ -1,4 +1,4 @@
-import { ProjectInfo, Slide, FileSystemFileHandle } from "../types";
+import { ProjectInfo, Slide, LocalFileHandle } from "../types";
 
 // Helper to convert Base64 to Blob
 const base64ToBlob = (base64: string) => {
@@ -35,8 +35,8 @@ export class ProjectIO {
     project: ProjectInfo, 
     slides: Slide[], 
     activeSlideId: string | null,
-    existingHandle?: FileSystemFileHandle | null
-  ): Promise<FileSystemFileHandle | null> {
+    existingHandle?: LocalFileHandle | null
+  ): Promise<LocalFileHandle | null> {
     
     if (!window.JSZip) {
       throw new Error("Export libraries (JSZip) not loaded.");
@@ -91,7 +91,7 @@ export class ProjectIO {
     return null;
   }
 
-  private static async writeFileToHandle(handle: FileSystemFileHandle, blob: Blob) {
+  private static async writeFileToHandle(handle: LocalFileHandle, blob: Blob) {
      const writable = await handle.createWritable();
      await writable.write(blob);
      await writable.close();

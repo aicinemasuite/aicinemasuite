@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ProjectInfo, Slide, ViewMode, ShowcaseScene, ProjectType, Character, Poster, ServiceType, StudioTab, AudioAsset, VideoAsset, UserProfile, ToastMessage, ToastType, FileSystemFileHandle } from './types';
+import { ProjectInfo, Slide, ViewMode, ShowcaseScene, ProjectType, Character, Poster, ServiceType, StudioTab, AudioAsset, VideoAsset, UserProfile, ToastMessage, ToastType, LocalFileHandle } from './types';
 import { generateSlideContent, generateVisualPrompt, generateSlideImage, generateNextShowcaseScene } from './services/geminiService';
 import { ProjectIO } from './services/ProjectIO';
 import { SetupView } from './components/SetupView';
@@ -69,7 +69,7 @@ const App: React.FC = () => {
   const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
   // --- AUTO SAVE / FILE HANDLE STATE ---
-  const [fileHandle, setFileHandle] = useState<FileSystemFileHandle | null>(null);
+  const [fileHandle, setFileHandle] = useState<LocalFileHandle | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   // TOAST SYSTEM
