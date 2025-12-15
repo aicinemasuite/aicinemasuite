@@ -3,9 +3,8 @@ import { ProjectInfo, ShowcaseScene, ProjectType, Character, LocationAsset, Post
 import { INDIAN_CINEMA_BEATS } from "../constants";
 
 const getAIClient = () => {
-  // Priority: 1. Environment Variable, 2. Local Storage
-  const apiKey = process.env.API_KEY || localStorage.getItem('gemini_api_key') || "";
-  return new GoogleGenAI({ apiKey });
+  // Priority: Strictly use Environment Variable as per guidelines
+  return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
 // Relaxed safety settings for creative content - Using strings to avoid Build Errors
@@ -30,13 +29,35 @@ const extractImageFromResponse = (response: any): string | null => {
   return null;
 };
 
-// Helper for Imagen Fallback extraction
-const extractImagenResponse = (response: any): string | null => {
-  if (response.generatedImages && response.generatedImages.length > 0) {
-     const img = response.generatedImages[0];
-     if (img.image?.imageBytes) {
-        return `data:${img.image.mimeType || 'image/png'};base64,${img.image.imageBytes}`;
-     }
+// --- GENERIC IMAGE GENERATOR HELPER ---
+// Tries primary model, then falls back to pro model if needed.
+const generateImageWithFallback = async (
+  contents: any, 
+  aspectRatio: string
+): Promise<string | null> => {
+  const ai = getAIClient();
+  // Strategy: Try Flash first (Fast/Cheaper), then Pro (High Quality)
+  const models = ["gemini-2.5-flash-image", "gemini-3-pro-image-preview"];
+
+  for (const model of models) {
+    try {
+      const response = await ai.models.generateContent({
+        model,
+        contents,
+        config: {
+          imageConfig: { aspectRatio },
+          safetySettings: SAFETY_SETTINGS as any
+        }
+      });
+      const image = extractImageFromResponse(response);
+      if (image) return image;
+    } catch (e: any) {
+      console.warn(`Image generation failed with model ${model}.`, e.message);
+      // If this was the last model, or if it's a specific error we shouldn't retry, log it.
+      if (model === models[models.length - 1]) {
+         console.error("All image generation attempts failed.");
+      }
+    }
   }
   return null;
 };
@@ -194,47 +215,13 @@ export const generateVisualPrompt = async (
 };
 
 export const generateSlideImage = async (imagePrompt: string, aspectRatio: '16:9'|'1:1'|'2:3' = '16:9'): Promise<string | null> => {
-  const ai = getAIClient();
-  const primaryModel = "gemini-2.5-flash-image"; 
-  const fallbackModel = "imagen-3.0-generate-001";
-
   // Map custom aspect ratios
   let targetRatio = "16:9";
   if (aspectRatio === '1:1') targetRatio = "1:1";
   if (aspectRatio === '2:3') targetRatio = "3:4"; 
 
-  try {
-    // Attempt 1: Gemini Flash Image (Fast)
-    const response = await ai.models.generateContent({
-      model: primaryModel,
-      contents: { parts: [{ text: imagePrompt }] },
-      config: {
-        imageConfig: { aspectRatio: targetRatio },
-        safetySettings: SAFETY_SETTINGS as any
-      }
-    });
-    return extractImageFromResponse(response);
-
-  } catch (e: any) {
-    console.warn(`Primary model ${primaryModel} failed. Attempting fallback...`, e);
-    
-    // Attempt 2: Imagen 3 (Robust)
-    try {
-      const response = await ai.models.generateImages({
-        model: fallbackModel,
-        prompt: imagePrompt,
-        config: {
-          numberOfImages: 1,
-          aspectRatio: targetRatio,
-          // safetyFilterLevel: 'block_only_high' // Ensure types compatibility
-        }
-      });
-      return extractImagenResponse(response);
-    } catch (fallbackError: any) {
-      console.error("All image generation strategies failed.", fallbackError);
-      throw fallbackError;
-    }
-  }
+  const contents = { parts: [{ text: imagePrompt }] };
+  return generateImageWithFallback(contents, targetRatio);
 };
 
 // Specialized Poster Generator
@@ -242,9 +229,6 @@ export const generatePosterImage = async (
   poster: Poster,
   project: ProjectInfo
 ): Promise<string | null> => {
-  const ai = getAIClient();
-  const primaryModel = "gemini-2.5-flash-image";
-  const fallbackModel = "imagen-3.0-generate-001";
   
   // Prepare Prompt
   let refInstructions = "";
@@ -290,35 +274,7 @@ export const generatePosterImage = async (
   if (poster.aspectRatio === '1:1') targetRatio = "1:1";
   if (poster.aspectRatio === '2:3') targetRatio = "3:4";
 
-  try {
-    const response = await ai.models.generateContent({
-      model: primaryModel,
-      contents: { parts },
-      config: {
-        imageConfig: { aspectRatio: targetRatio },
-        safetySettings: SAFETY_SETTINGS as any
-      }
-    });
-    return extractImageFromResponse(response);
-
-  } catch (e: any) {
-    console.warn(`Primary model failed for poster. Attempting fallback...`, e);
-    // Note: Fallback can't use reference images easily in this simplified flow
-    try {
-      const response = await ai.models.generateImages({
-        model: fallbackModel,
-        prompt: fullPrompt, // Text only fallback
-        config: {
-          numberOfImages: 1,
-          aspectRatio: targetRatio,
-        }
-      });
-      return extractImagenResponse(response);
-    } catch (fallbackError) {
-      console.error("Poster gen failed", fallbackError);
-      throw fallbackError;
-    }
-  }
+  return generateImageWithFallback({ parts }, targetRatio);
 };
 
 
@@ -327,9 +283,6 @@ export const generateCharacterImage = async (
   character: Character,
   prompt: string
 ): Promise<string | null> => {
-  const ai = getAIClient();
-  const primaryModel = "gemini-2.5-flash-image";
-  const fallbackModel = "imagen-3.0-generate-001";
 
   const parts: any[] = [];
   let refInstructions = "";
@@ -371,32 +324,7 @@ export const generateCharacterImage = async (
   if (character.aspectRatio === '16:9') targetRatio = "16:9";
   if (character.aspectRatio === '2:3') targetRatio = "3:4";
 
-  try {
-    const response = await ai.models.generateContent({
-      model: primaryModel,
-      contents: { parts },
-      config: {
-        imageConfig: { aspectRatio: targetRatio },
-        safetySettings: SAFETY_SETTINGS as any
-      }
-    });
-    return extractImageFromResponse(response);
-  } catch (e: any) {
-    console.warn(`Primary model failed for character. Attempting fallback...`, e);
-    try {
-      const response = await ai.models.generateImages({
-        model: fallbackModel,
-        prompt: fullPrompt,
-        config: {
-          numberOfImages: 1,
-          aspectRatio: targetRatio,
-        }
-      });
-      return extractImagenResponse(response);
-    } catch (fallbackError) {
-      throw fallbackError;
-    }
-  }
+  return generateImageWithFallback({ parts }, targetRatio);
 };
 
 // Specialized Storyboard Generator
@@ -404,9 +332,6 @@ export const generateStoryboardImage = async (
   project: ProjectInfo,
   scene: ShowcaseScene
 ): Promise<string | null> => {
-  const ai = getAIClient();
-  const primaryModel = "gemini-2.5-flash-image";
-  const fallbackModel = "imagen-3.0-generate-001";
 
   // 1. Prepare Technical Specs
   const techSpecs = [
@@ -460,32 +385,7 @@ export const generateStoryboardImage = async (
     text: `${castingPrompt}\n\n${textPrompt}`
   });
 
-  try {
-    const response = await ai.models.generateContent({
-      model: primaryModel,
-      contents: { parts },
-      config: {
-        imageConfig: { aspectRatio: "16:9" },
-        safetySettings: SAFETY_SETTINGS as any
-      }
-    });
-    return extractImageFromResponse(response);
-  } catch (e: any) {
-    console.warn(`Primary model failed for storyboard. Attempting fallback...`, e);
-    try {
-      const response = await ai.models.generateImages({
-        model: fallbackModel,
-        prompt: `${castingPrompt} ${textPrompt}`,
-        config: {
-          numberOfImages: 1,
-          aspectRatio: "16:9",
-        }
-      });
-      return extractImagenResponse(response);
-    } catch (fallbackError) {
-      throw fallbackError;
-    }
-  }
+  return generateImageWithFallback({ parts }, "16:9");
 };
 
 export const generateNextShowcaseScene = async (
@@ -688,7 +588,7 @@ export const generateVideoTrailer = async (prompt: string): Promise<string | nul
     if (!downloadLink) return null;
 
     // Use process.env.API_KEY for fetching
-    const apiKey = process.env.API_KEY || localStorage.getItem('gemini_api_key');
+    const apiKey = process.env.API_KEY;
     const response = await fetch(`${downloadLink}&key=${apiKey}`);
     const blob = await response.blob();
     return URL.createObjectURL(blob);
@@ -744,10 +644,6 @@ export const findLocations = async (project: ProjectInfo, requirements: string, 
 };
 
 export const generateLocationImage = async (location: LocationAsset, sceneVibe: string): Promise<string | null> => {
-  const ai = getAIClient();
-  const primaryModel = "gemini-2.5-flash-image";
-  const fallbackModel = "imagen-3.0-generate-001";
-
   const prompt = `
     Concept Art for Film Location.
     Location: ${location.name} (${location.description}).
@@ -756,32 +652,7 @@ export const generateLocationImage = async (location: LocationAsset, sceneVibe: 
     --ar 16:9
   `;
 
-  try {
-    const response = await ai.models.generateContent({
-      model: primaryModel,
-      contents: { parts: [{ text: prompt }] },
-      config: {
-        imageConfig: { aspectRatio: "16:9" },
-        safetySettings: SAFETY_SETTINGS as any
-      }
-    });
-    return extractImageFromResponse(response);
-  } catch (e: any) {
-    console.warn(`Primary model failed for location. Attempting fallback...`, e);
-    try {
-      const response = await ai.models.generateImages({
-        model: fallbackModel,
-        prompt: prompt,
-        config: {
-          numberOfImages: 1,
-          aspectRatio: "16:9",
-        }
-      });
-      return extractImagenResponse(response);
-    } catch (fallbackError) {
-      return null;
-    }
-  }
+  return generateImageWithFallback({ parts: [{ text: prompt }] }, "16:9");
 };
 
 export const generatePosterPrompt = async (project: ProjectInfo): Promise<string> => {
