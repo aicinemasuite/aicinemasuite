@@ -5,22 +5,24 @@ import { INDIAN_CINEMA_BEATS } from "../constants";
 const getAIClient = () => {
   // Priority: 1. Environment Variable, 2. Local Storage
   const apiKey = process.env.API_KEY || localStorage.getItem('gemini_api_key') || "";
-  if (!apiKey) {
-    console.error("API Key is missing. Prompting user...");
-    throw new Error("API Key is missing. Please add it in Settings.");
-  }
   return new GoogleGenAI({ apiKey });
 };
 
-// Helper for Gemini Image Extraction (generateContent)
-const extractGeminiImageResponse = (response: any): string | null => {
-  // Check candidates list
-  if (response.candidates && response.candidates.length > 0) {
-    const candidate = response.candidates[0];
-    if (candidate.content && candidate.content.parts) {
+// Relaxed safety settings for creative content - Using strings to avoid Build Errors
+const SAFETY_SETTINGS = [
+  { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
+  { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
+  { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
+  { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
+];
+
+// Helper to extract base64 image from response (GenerateContentResponse)
+const extractImageFromResponse = (response: any): string | null => {
+  for (const candidate of response.candidates || []) {
+    if (candidate.content?.parts) {
       for (const part of candidate.content.parts) {
         if (part.inlineData && part.inlineData.data) {
-          return `data:${part.inlineData.mimeType || 'image/png'};base64,${part.inlineData.data}`;
+           return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
         }
       }
     }
@@ -28,7 +30,16 @@ const extractGeminiImageResponse = (response: any): string | null => {
   return null;
 };
 
-// --- TEXT GENERATION FUNCTIONS ---
+// Helper for Imagen Fallback extraction
+const extractImagenResponse = (response: any): string | null => {
+  if (response.generatedImages && response.generatedImages.length > 0) {
+     const img = response.generatedImages[0];
+     if (img.image?.imageBytes) {
+        return `data:${img.image.mimeType || 'image/png'};base64,${img.image.imageBytes}`;
+     }
+  }
+  return null;
+};
 
 export const generateSlideContent = async (
   project: ProjectInfo,
@@ -89,7 +100,7 @@ export const generateSlideContent = async (
     return response.text?.trim() || "";
   } catch (error: any) {
     console.error("Content Gen Error:", error);
-    return "Error generating content. Please check your API Key in Settings.";
+    return "Error generating content. Please check your API Key.";
   }
 };
 
@@ -148,7 +159,7 @@ export const generateVisualPrompt = async (
     const model = "gemini-2.5-flash";
 
     const prompt = `
-      Act as a visual prompt engineer for high-end AI image generators (Midjourney/Imagen/Gemini).
+      Act as a visual prompt engineer for high-end AI image generators.
       
       Project Concept:
       Type: ${project.projectType}
@@ -182,173 +193,300 @@ export const generateVisualPrompt = async (
   }
 };
 
-// --- IMAGE GENERATION FUNCTIONS (Gemini 2.5 Flash Image) ---
-
 export const generateSlideImage = async (imagePrompt: string, aspectRatio: '16:9'|'1:1'|'2:3' = '16:9'): Promise<string | null> => {
-  try {
-    const ai = getAIClient();
-    // Using generateContent with gemini-2.5-flash-image which supports image generation via text prompting
-    const model = "gemini-2.5-flash-image"; 
+  const ai = getAIClient();
+  const primaryModel = "gemini-2.5-flash-image"; 
+  const fallbackModel = "imagen-3.0-generate-001";
 
+  // Map custom aspect ratios
+  let targetRatio = "16:9";
+  if (aspectRatio === '1:1') targetRatio = "1:1";
+  if (aspectRatio === '2:3') targetRatio = "3:4"; 
+
+  try {
+    // Attempt 1: Gemini Flash Image (Fast)
     const response = await ai.models.generateContent({
-      model: model,
+      model: primaryModel,
       contents: { parts: [{ text: imagePrompt }] },
       config: {
-        imageConfig: {
-            aspectRatio: aspectRatio
-        }
+        imageConfig: { aspectRatio: targetRatio },
+        safetySettings: SAFETY_SETTINGS as any
       }
     });
-    return extractGeminiImageResponse(response);
+    return extractImageFromResponse(response);
 
   } catch (e: any) {
-    console.error(`Image generation failed.`, e);
-    throw e;
+    console.warn(`Primary model ${primaryModel} failed. Attempting fallback...`, e);
+    
+    // Attempt 2: Imagen 3 (Robust)
+    try {
+      const response = await ai.models.generateImages({
+        model: fallbackModel,
+        prompt: imagePrompt,
+        config: {
+          numberOfImages: 1,
+          aspectRatio: targetRatio,
+          // safetyFilterLevel: 'block_only_high' // Ensure types compatibility
+        }
+      });
+      return extractImagenResponse(response);
+    } catch (fallbackError: any) {
+      console.error("All image generation strategies failed.", fallbackError);
+      throw fallbackError;
+    }
   }
 };
 
+// Specialized Poster Generator
 export const generatePosterImage = async (
   poster: Poster,
   project: ProjectInfo
 ): Promise<string | null> => {
-  try {
-    const ai = getAIClient();
-    const model = "gemini-2.5-flash-image";
-    
-    let fullPrompt = `Create a High Quality Movie Poster. 
-    Title: ${poster.title}. 
-    Tagline: ${poster.tagline}. 
-    Visual Description: ${poster.prompt}. 
-    Style: ${poster.style}. 
-    Requirements: Cinematic lighting, professional composition, high resolution text rendering for the Title.`;
+  const ai = getAIClient();
+  const primaryModel = "gemini-2.5-flash-image";
+  const fallbackModel = "imagen-3.0-generate-001";
+  
+  // Prepare Prompt
+  let refInstructions = "";
+  const parts: any[] = [];
 
-    if (poster.characterRefId) {
-      const char = project.characters?.find(c => c.id === poster.characterRefId);
-      if (char) {
-         fullPrompt += ` Featuring Character: ${char.name}, ${char.gender}, ${char.description}.`;
-      }
+  if (poster.characterRefId) {
+    const char = project.characters?.find(c => c.id === poster.characterRefId);
+    if (char && char.imageUrl) {
+       const base64Data = char.imageUrl.split(',')[1];
+       if (base64Data) {
+          parts.push({ inlineData: { mimeType: "image/png", data: base64Data } });
+          refInstructions = `REFERENCE CHARACTER: Use the facial features and identity of the character in the attached image. `;
+       }
     }
+  } else if (poster.referenceImageUrl) {
+    const base64Data = poster.referenceImageUrl.split(',')[1];
+    if (base64Data) {
+       parts.push({ inlineData: { mimeType: "image/png", data: base64Data } });
+       refInstructions = `REFERENCE IMAGE: Use the style or character features from the attached image as a key reference. `;
+    }
+  }
 
+  const fullPrompt = `
+    Create a High Quality Movie Poster.
+    ${refInstructions}
+    
+    Details:
+    Title: ${poster.title}
+    Tagline: ${poster.tagline}
+    Visual Description: ${poster.prompt}
+    Style: ${poster.style}
+    
+    Requirements: 
+    - Cinematic lighting, professional composition.
+    - High resolution text rendering for the Title if possible.
+    - ${refInstructions ? "Maintain strict consistency with the reference image provided." : ""}
+  `;
+
+  parts.push({ text: fullPrompt });
+
+  let targetRatio = "3:4";
+  if (poster.aspectRatio === '16:9') targetRatio = "16:9";
+  if (poster.aspectRatio === '1:1') targetRatio = "1:1";
+  if (poster.aspectRatio === '2:3') targetRatio = "3:4";
+
+  try {
     const response = await ai.models.generateContent({
-      model: model,
-      contents: { parts: [{ text: fullPrompt }] },
+      model: primaryModel,
+      contents: { parts },
       config: {
-        imageConfig: {
-            aspectRatio: poster.aspectRatio
-        }
+        imageConfig: { aspectRatio: targetRatio },
+        safetySettings: SAFETY_SETTINGS as any
       }
     });
-    return extractGeminiImageResponse(response);
+    return extractImageFromResponse(response);
 
-  } catch (error: any) {
-    console.error("Poster Gen Error:", error);
-    throw error;
+  } catch (e: any) {
+    console.warn(`Primary model failed for poster. Attempting fallback...`, e);
+    // Note: Fallback can't use reference images easily in this simplified flow
+    try {
+      const response = await ai.models.generateImages({
+        model: fallbackModel,
+        prompt: fullPrompt, // Text only fallback
+        config: {
+          numberOfImages: 1,
+          aspectRatio: targetRatio,
+        }
+      });
+      return extractImagenResponse(response);
+    } catch (fallbackError) {
+      console.error("Poster gen failed", fallbackError);
+      throw fallbackError;
+    }
   }
 };
 
+
+// Specialized Character Generator
 export const generateCharacterImage = async (
   character: Character,
   prompt: string
 ): Promise<string | null> => {
-  try {
-    const ai = getAIClient();
-    const model = "gemini-2.5-flash-image";
+  const ai = getAIClient();
+  const primaryModel = "gemini-2.5-flash-image";
+  const fallbackModel = "imagen-3.0-generate-001";
 
+  const parts: any[] = [];
+  let refInstructions = "";
+
+  // 1. Face / Identity Reference
+  if (character.referenceImageUrl) {
+    const base64Data = character.referenceImageUrl.split(',')[1];
+    if (base64Data) {
+      parts.push({
+        inlineData: { mimeType: "image/png", data: base64Data }
+      });
+      refInstructions += "REFERENCE IMAGE 1 (FACE/IDENTITY): Use this image as the strict reference for the character's facial features and identity. ";
+    }
+  }
+
+  // 2. Pose / Action Reference
+  if (character.actionReferenceImageUrl) {
+    const base64Data = character.actionReferenceImageUrl.split(',')[1];
+    if (base64Data) {
+      parts.push({
+        inlineData: { mimeType: "image/png", data: base64Data }
+      });
+      refInstructions += "REFERENCE IMAGE 2 (POSE/BODY): Use this image as the reference for the character's pose, body language, and action. ";
+    }
+  }
+
+  const fullPrompt = `
+    ${refInstructions}
+    
+    Generate a Character Design / Portrait.
+    Description: ${prompt}
+    
+    ${refInstructions ? "Ensure consistency with provided reference images." : ""}
+  `;
+
+  parts.push({ text: fullPrompt });
+
+  let targetRatio = "1:1";
+  if (character.aspectRatio === '16:9') targetRatio = "16:9";
+  if (character.aspectRatio === '2:3') targetRatio = "3:4";
+
+  try {
     const response = await ai.models.generateContent({
-      model: model,
-      contents: { parts: [{ text: prompt }] },
+      model: primaryModel,
+      contents: { parts },
       config: {
-        imageConfig: {
-            aspectRatio: character.aspectRatio
-        }
+        imageConfig: { aspectRatio: targetRatio },
+        safetySettings: SAFETY_SETTINGS as any
       }
     });
-    return extractGeminiImageResponse(response);
+    return extractImageFromResponse(response);
   } catch (e: any) {
-    console.error("Character Gen Error:", e);
-    throw e;
+    console.warn(`Primary model failed for character. Attempting fallback...`, e);
+    try {
+      const response = await ai.models.generateImages({
+        model: fallbackModel,
+        prompt: fullPrompt,
+        config: {
+          numberOfImages: 1,
+          aspectRatio: targetRatio,
+        }
+      });
+      return extractImagenResponse(response);
+    } catch (fallbackError) {
+      throw fallbackError;
+    }
   }
 };
 
+// Specialized Storyboard Generator
 export const generateStoryboardImage = async (
   project: ProjectInfo,
   scene: ShowcaseScene
 ): Promise<string | null> => {
+  const ai = getAIClient();
+  const primaryModel = "gemini-2.5-flash-image";
+  const fallbackModel = "imagen-3.0-generate-001";
+
+  // 1. Prepare Technical Specs
+  const techSpecs = [
+    scene.lensType ? `${scene.lensType} lens` : '',
+    scene.cameraAngle ? `${scene.cameraAngle} shot` : '',
+    scene.shotSize ? `${scene.shotSize}` : '',
+    scene.imageStyle ? `Art Style: ${scene.imageStyle}` : '',
+    scene.colorGrade ? `Color Grading/Mood: ${scene.colorGrade}` : ''
+  ].filter(Boolean).join(", ");
+
+  const textPrompt = `
+    Create a Wide 16:9 Cinematic Storyboard Image.
+    Scene Action: ${scene.action}
+    Camera & Visual Specs: ${techSpecs}
+    General Style: ${scene.imageStyle || "Realistic cinematic storyboard"}
+    Lighting: High contrast, dynamic composition, cinematic lighting.
+    Format: Landscape 16:9 Aspect Ratio.
+  `;
+
+  // 2. Prepare Reference Images (Multimodal)
+  const parts: any[] = [];
+  let castingPrompt = "";
+
+  const addCharacterReference = (charId: string, slotName: string) => {
+    const character = project.characters?.find(c => c.id === charId);
+    if (character && character.imageUrl) {
+      const base64Data = character.imageUrl.split(',')[1];
+      if (base64Data) {
+        parts.push({
+          inlineData: { mimeType: "image/png", data: base64Data }
+        });
+        return `The character in the attached image is ${character.name} (${slotName}). `;
+      }
+    }
+    return "";
+  };
+
+  if (scene.characterRef1Id) {
+    castingPrompt += addCharacterReference(scene.characterRef1Id, "Character A");
+  }
+  if (scene.characterRef2Id) {
+    castingPrompt += addCharacterReference(scene.characterRef2Id, "Character B");
+  }
+
+  if (castingPrompt) {
+    castingPrompt += "MAINTAIN CHARACTER CONSISTENCY. Use the visual features (face, hair, clothes) from the reference image(s) for the characters in this scene.";
+  }
+
+  // 3. Combine Text Prompt
+  parts.push({
+    text: `${castingPrompt}\n\n${textPrompt}`
+  });
+
   try {
-    const ai = getAIClient();
-    const model = "gemini-2.5-flash-image";
-
-    // 1. Prepare Technical Specs
-    const techSpecs = [
-      scene.lensType ? `${scene.lensType} lens` : '',
-      scene.cameraAngle ? `${scene.cameraAngle} shot` : '',
-      scene.shotSize ? `${scene.shotSize}` : '',
-      scene.imageStyle ? `Art Style: ${scene.imageStyle}` : '',
-      scene.colorGrade ? `Color Grading/Mood: ${scene.colorGrade}` : ''
-    ].filter(Boolean).join(", ");
-
-    let prompt = `Cinematic Storyboard Frame. 
-    Scene Action: ${scene.action}. 
-    Visual Details: ${scene.visualPrompt || scene.action}. 
-    Camera Specs: ${techSpecs}. 
-    Lighting: High contrast, dynamic composition, cinematic lighting. 
-    Format: Landscape 16:9. Photorealistic.`;
-
-    // 2. Add Character Context (Text only for stability)
-    if (scene.characterRef1Id) {
-      const c = project.characters?.find(x => x.id === scene.characterRef1Id);
-      if (c) prompt += ` Featuring character: ${c.name} (${c.gender}, ${c.description}).`;
-    }
-    if (scene.characterRef2Id) {
-      const c = project.characters?.find(x => x.id === scene.characterRef2Id);
-      if (c) prompt += ` Also featuring character: ${c.name} (${c.gender}, ${c.description}).`;
-    }
-
     const response = await ai.models.generateContent({
-      model: model,
-      contents: { parts: [{ text: prompt }] },
+      model: primaryModel,
+      contents: { parts },
       config: {
-        imageConfig: {
-            aspectRatio: "16:9"
-        }
+        imageConfig: { aspectRatio: "16:9" },
+        safetySettings: SAFETY_SETTINGS as any
       }
     });
-    return extractGeminiImageResponse(response);
+    return extractImageFromResponse(response);
   } catch (e: any) {
-    console.error("Storyboard Gen Error:", e);
-    throw e;
-  }
-};
-
-export const generateLocationImage = async (location: LocationAsset, sceneVibe: string): Promise<string | null> => {
-  try {
-    const ai = getAIClient();
-    const model = "gemini-2.5-flash-image";
-
-    const prompt = `
-      Concept Art for Film Location.
-      Location: ${location.name} (${location.description}).
-      Scene Context: ${sceneVibe}.
-      Style: Photorealistic, Cinematic, Wide Angle.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: model,
-      contents: { parts: [{ text: prompt }] },
-      config: {
-        imageConfig: {
-            aspectRatio: "16:9"
+    console.warn(`Primary model failed for storyboard. Attempting fallback...`, e);
+    try {
+      const response = await ai.models.generateImages({
+        model: fallbackModel,
+        prompt: `${castingPrompt} ${textPrompt}`,
+        config: {
+          numberOfImages: 1,
+          aspectRatio: "16:9",
         }
-      }
-    });
-    return extractGeminiImageResponse(response);
-  } catch (e: any) {
-    console.error("Location Gen Error:", e);
-    return null;
+      });
+      return extractImagenResponse(response);
+    } catch (fallbackError) {
+      throw fallbackError;
+    }
   }
 };
-
-// --- DATA GENERATION FUNCTIONS ---
 
 export const generateNextShowcaseScene = async (
   project: ProjectInfo,
@@ -602,6 +740,47 @@ export const findLocations = async (project: ProjectInfo, requirements: string, 
   } catch (error: any) {
     console.error("Location Search Error:", error);
     return [];
+  }
+};
+
+export const generateLocationImage = async (location: LocationAsset, sceneVibe: string): Promise<string | null> => {
+  const ai = getAIClient();
+  const primaryModel = "gemini-2.5-flash-image";
+  const fallbackModel = "imagen-3.0-generate-001";
+
+  const prompt = `
+    Concept Art for Film Location.
+    Location: ${location.name} (${location.description}).
+    Scene Context: ${sceneVibe}.
+    Style: Photorealistic, Cinematic, Wide Angle.
+    --ar 16:9
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: primaryModel,
+      contents: { parts: [{ text: prompt }] },
+      config: {
+        imageConfig: { aspectRatio: "16:9" },
+        safetySettings: SAFETY_SETTINGS as any
+      }
+    });
+    return extractImageFromResponse(response);
+  } catch (e: any) {
+    console.warn(`Primary model failed for location. Attempting fallback...`, e);
+    try {
+      const response = await ai.models.generateImages({
+        model: fallbackModel,
+        prompt: prompt,
+        config: {
+          numberOfImages: 1,
+          aspectRatio: "16:9",
+        }
+      });
+      return extractImagenResponse(response);
+    } catch (fallbackError) {
+      return null;
+    }
   }
 };
 
@@ -867,6 +1046,6 @@ export const getCinemaChatResponse = async (history: {role: string, content: str
     return result.text;
   } catch (error: any) {
     console.error("Chat Bot Error:", error);
-    return "I'm having trouble connecting to the studio server. Please check your API Key in Settings.";
+    return "I'm having trouble connecting to the studio server. Please check your API Key.";
   }
 };
