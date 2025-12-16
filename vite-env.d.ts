@@ -1,5 +1,4 @@
-// Removed missing vite/client reference to fix build error
-// /// <reference types="vite/client" />
+// Manual type definitions to replace missing vite/client types
 
 interface ImportMetaEnv {
   readonly API_KEY: string;
@@ -10,11 +9,34 @@ interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
 
-// Augment the existing ProcessEnv interface to include API_KEY
-// This avoids redeclaring the global 'process' variable which causes type conflicts
-declare namespace NodeJS {
-  interface ProcessEnv {
-    API_KEY: string;
-    [key: string]: string | undefined;
-  }
+declare module '*.svg' {
+  import * as React from 'react';
+  export const ReactComponent: React.FunctionComponent<React.SVGProps<SVGSVGElement> & { title?: string }>;
+  const src: string;
+  export default src;
+}
+
+declare module '*.png' {
+  const src: string;
+  export default src;
+}
+
+declare module '*.jpg' {
+  const src: string;
+  export default src;
+}
+
+declare module '*.jpeg' {
+  const src: string;
+  export default src;
+}
+
+declare module '*.gif' {
+  const src: string;
+  export default src;
+}
+
+declare module '*.webp' {
+  const src: string;
+  export default src;
 }

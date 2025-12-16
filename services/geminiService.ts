@@ -2,12 +2,36 @@ import { GoogleGenAI, Modality } from "@google/genai";
 import { ProjectInfo, ShowcaseScene, ProjectType, Character, LocationAsset, Poster, ScriptBeat, TwistOption, BudgetLineItem } from "../types";
 import { INDIAN_CINEMA_BEATS } from "../constants";
 
-const getAIClient = () => {
-  // Priority: Strictly use Environment Variable as per guidelines
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+// --- API KEY MANAGEMENT ---
+
+// Safe storage access to prevent crashes in restricted iframes/incognito
+const safeGetItem = (key: string): string | null => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return localStorage.getItem(key);
+    }
+  } catch (e) {
+    console.warn(`Unable to access localStorage for ${key}`, e);
+  }
+  return null;
 };
 
-// Relaxed safety settings for creative content - Using strings to avoid Build Errors
+const getApiKey = (): string => {
+  // Check Environment Variable (Build time) OR Local Storage (Runtime)
+  // This fixes the issue where Netlify vars might not inject correctly without a rebuild
+  const key = process.env.API_KEY || safeGetItem('gemini_api_key') || '';
+  return key;
+};
+
+const getAIClient = () => {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please add it in the app settings or profile menu.");
+  }
+  return new GoogleGenAI({ apiKey });
+};
+
+// Relaxed safety settings for creative content
 const SAFETY_SETTINGS = [
   { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
   { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
@@ -36,11 +60,16 @@ const generateImageWithFallback = async (
   aspectRatio: string
 ): Promise<string | null> => {
   const ai = getAIClient();
-  // Strategy: Try Flash first (Fast/Cheaper), then Pro (High Quality)
+  
+  // CORRECT MODELS FOR IMAGE GENERATION
+  // Do NOT use 'gemini-1.5-flash' here as it does not generate images.
   const models = ["gemini-2.5-flash-image", "gemini-3-pro-image-preview"];
+  
+  let lastError: any = null;
 
   for (const model of models) {
     try {
+      console.log(`Attempting image generation with ${model}...`);
       const response = await ai.models.generateContent({
         model,
         contents,
@@ -50,14 +79,34 @@ const generateImageWithFallback = async (
         }
       });
       const image = extractImageFromResponse(response);
-      if (image) return image;
+      if (image) {
+        console.log(`Success: Generated image with ${model}`);
+        return image;
+      } else {
+        console.warn(`Model ${model} returned no image data.`);
+      }
     } catch (e: any) {
       console.warn(`Image generation failed with model ${model}.`, e.message);
-      // If this was the last model, or if it's a specific error we shouldn't retry, log it.
-      if (model === models[models.length - 1]) {
-         console.error("All image generation attempts failed.");
+      
+      // Check specifically for Rate Limit / Quota errors
+      const isQuotaError = e.message?.includes('429') || 
+                           e.message?.includes('Quota exceeded') || 
+                           e.message?.includes('RESOURCE_EXHAUSTED');
+
+      if (isQuotaError) {
+         console.error("Quota exceeded for image generation.");
+         // Stop the loop immediately to avoid further errors
+         throw new Error("QUOTA_EXCEEDED: Free Tier limit reached. Please wait 1-2 minutes before trying again.");
       }
+
+      lastError = e;
     }
+  }
+  
+  // If we get here, all models failed (and weren't quota errors that threw early)
+  console.error("All image generation attempts failed. Last error:", lastError);
+  if (lastError) {
+     throw new Error(`Image Gen Failed: ${lastError.message || "Check API Key & Quota"}`);
   }
   return null;
 };
@@ -69,7 +118,8 @@ export const generateSlideContent = async (
 ): Promise<string> => {
   try {
     const ai = getAIClient();
-    const model = "gemini-2.5-flash";
+    // TEXT MODEL
+    const model = "gemini-2.5-flash"; 
     
     const langInstruction = project.language === 'ml' 
       ? "Write the output content strictly in Malayalam language (മലയാളം)." 
@@ -587,8 +637,8 @@ export const generateVideoTrailer = async (prompt: string): Promise<string | nul
     const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
     if (!downloadLink) return null;
 
-    // Use process.env.API_KEY for fetching
-    const apiKey = process.env.API_KEY;
+    // Use getApiKey helper for fetching
+    const apiKey = getApiKey();
     const response = await fetch(`${downloadLink}&key=${apiKey}`);
     const blob = await response.blob();
     return URL.createObjectURL(blob);

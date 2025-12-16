@@ -8,11 +8,12 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
-      // Safely define only the specific key we need, rather than replacing the whole object
-      // This prevents 'process.env.NODE_ENV is undefined' errors in some libraries
       'process.env.API_KEY': JSON.stringify(env.API_KEY || '')
     },
     build: {
+      // Changed to 'build' to avoid permission conflicts with previous 'dist' folder
+      outDir: 'build', 
+      emptyOutDir: true,
       chunkSizeWarningLimit: 3000,
       rollupOptions: {
         output: {

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ICONS, PLACEHOLDER_IMAGE, DICTIONARY, DIRECTOR_STYLES, VISUAL_STYLES, CHARACTER_STYLES, ROLE_TYPES, BODY_TYPES, EXPRESSIONS, SHOT_SIZES, CAMERA_ANGLES, LENS_TYPES, STORYBOARD_STYLES, VOICE_OPTIONS, POSTER_COMPOSITIONS, COLOR_PALETTES } from '../constants';
 import { Slide, ProjectInfo, ShowcaseScene, StudioTab, Character, Poster, AudioAsset, VideoAsset, LocationAsset, UserProfile, CastMember, CrewMember, VaultItem, VaultItemType, ScriptBeat, TwistOption, BudgetLineItem } from '../types';
@@ -398,12 +399,9 @@ export const StudioView: React.FC<StudioViewProps> = ({
       if (url) {
          const newVariants = [url, ...(scene.generatedVariants || [])].slice(0, 10);
          onUpdateScene(scene.id, { imageUrl: url, generatedVariants: newVariants });
-      } else {
-         alert("Image generation failed. Please check your API Key quota or model availability (Gemini 2.5 Flash Image).");
       }
-    } catch (e: any) {
-      console.error("Gen Error:", e);
-      alert(`Generation Failed: ${e.message || "Unknown error"}. Ensure your API Key is valid.`);
+    } catch (e) {
+      console.error(e);
     } finally {
       setIsAssetGenerating(false);
     }
@@ -497,9 +495,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
     setActiveAssetId(newPoster.id);
   };
 
-  // ... rest of the component (casting, vault handlers etc) remains unchanged ...
-  // Re-pasting standard handlers for completeness of the file update
-  
+  // --- CAST & CREW HANDLERS ---
   const handleAddCastMember = () => {
     if (!onUpdateProject) return;
     const newMember: CastMember = {
@@ -561,6 +557,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
     onUpdateProject({ crewList: updatedList });
   };
 
+  // --- VAULT HANDLERS ---
   const handleVaultUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && onUpdateProject) {
@@ -659,6 +656,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
      if (url && window.saveAs) {
         window.saveAs(url, filename);
      } else if (url) {
+        // Fallback
         const a = document.createElement('a');
         a.href = url;
         a.download = filename;
@@ -679,12 +677,13 @@ export const StudioView: React.FC<StudioViewProps> = ({
     </div>
   );
 
+  // TABS CONFIG - Added Budget
   const TABS = [
     { id: 'DECK', icon: ICONS.Layout, label: t.slideDeck },
     { id: 'SCRIPT', icon: ICONS.ScrollText, label: t.scriptMagic },
     { id: 'CAST_CREW', icon: ICONS.UserPlus, label: t.castCrew },
     { id: 'STORYBOARD', icon: ICONS.Clapperboard, label: t.storyBoard },
-    { id: 'BUDGET', icon: ICONS.Calculator, label: t.budgetForge },
+    { id: 'BUDGET', icon: ICONS.Calculator, label: t.budgetForge }, // NEW TAB
     { id: 'VAULT', icon: ICONS.Box, label: t.cinemaVault },
     { id: 'CHARACTERS', icon: ICONS.Users, label: t.characters },
     { id: 'LOCATION', icon: ICONS.MapPin, label: t.locationScout },
@@ -698,6 +697,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
   return (
     <div className="h-screen flex flex-col bg-zinc-950 overflow-hidden">
       
+      {/* VIDEO PLAYBACK MODAL */}
       {playingVideo && (
         <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center animate-in fade-in duration-200">
            <button 
@@ -726,9 +726,6 @@ export const StudioView: React.FC<StudioViewProps> = ({
         </div>
       )}
 
-      {/* ... [Rest of layout structure, Header, Tabs, Sidebar logic identical to previous version but calling new handlers] ... */}
-      {/* For brevity, assuming the rest of the component layout is preserved as per existing file content provided by user */}
-      
       <header className="h-14 border-b border-zinc-800 bg-zinc-900 flex items-center justify-between px-4 shrink-0 z-20">
         <div className="flex items-center gap-4">
            <button 
@@ -747,6 +744,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
            <h1 className="font-bold text-lg text-zinc-200 truncate max-w-xs">{project.title} <span className="text-zinc-600 text-xs ml-2 uppercase border border-zinc-700 rounded px-1">{project.serviceType.replace('_', ' ')}</span></h1>
         </div>
         <div className="flex items-center gap-2">
+          {/* LANGUAGE TOGGLE FOR STUDIO VIEW - FIXED */}
           <div className="flex bg-zinc-800 border border-zinc-700 rounded-full p-0.5 mr-2">
              <button 
                onClick={() => onUpdateProject && onUpdateProject({ language: 'en' })} 
@@ -765,6 +763,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
           {activeTab === 'STORYBOARD' && (
              <>
                <Button variant="secondary" icon={<ICONS.Play size={16} />} onClick={() => onPresentationMode('STORYBOARD')}>Present Storyboard</Button>
+               {/* RENAMED EXPORT BUTTON */}
                <Button variant="accent" className="bg-amber-600 hover:bg-amber-500 text-white border-none" onClick={onExport} icon={<ICONS.Upload size={16} />}>EXPORT</Button>
              </>
           )}
@@ -773,12 +772,15 @@ export const StudioView: React.FC<StudioViewProps> = ({
           )}
           <Button variant="ghost" icon={<ICONS.Save size={16} />} onClick={onSave}>{t.save}</Button>
 
+          {/* Divider */}
           <div className="h-6 w-px bg-zinc-800 mx-2"></div>
 
+          {/* FAQ */}
           <button onClick={onOpenFAQ} className="text-zinc-500 hover:text-white transition-colors" title="Help & FAQ">
             <ICONS.HelpCircle size={20} />
           </button>
           
+          {/* User Profile */}
           <div className="relative">
              <button onClick={() => setShowUserMenu(!showUserMenu)} className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-500 to-red-600 flex items-center justify-center text-white font-bold text-xs shadow-lg hover:ring-2 hover:ring-amber-500 transition-all">
                {currentUser?.name?.charAt(0) || "U"}
@@ -805,6 +807,7 @@ export const StudioView: React.FC<StudioViewProps> = ({
         </div>
       </header>
 
+      {/* NEW LANDSCAPE MENU BAR */}
       <div className="h-14 border-b border-zinc-800 bg-black flex items-center px-4 gap-2 overflow-x-auto no-scrollbar shrink-0">
          {TABS.map(tab => (
             <button
@@ -849,6 +852,8 @@ export const StudioView: React.FC<StudioViewProps> = ({
                   </div>
                 </div>
               )}
+
+              {/* SCRIPT LEFT PANE IS HANDLED INSIDE THE MAIN SCRIPT VIEW */}
 
               {activeTab === 'CHARACTERS' && (
                 <div className="space-y-2 p-2">
@@ -925,33 +930,540 @@ export const StudioView: React.FC<StudioViewProps> = ({
                 </div>
               )}
 
-              {/* ... (Other Sidebar Tabs) ... */}
+              {activeTab === 'AUDIO' && (
+                <div className="p-6 space-y-4">
+                   <h3 className="text-xs font-bold text-pink-500 uppercase mb-4 flex items-center gap-2"><ICONS.Mic size={14}/> Voice Generator</h3>
+                   <div>
+                      <label className="text-[10px] text-zinc-500 uppercase font-bold mb-1 block">Voice Actor</label>
+                      <select className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-xs" value={selectedVoice} onChange={(e) => setSelectedVoice(e.target.value)}>
+                         {VOICE_OPTIONS.map(v => <option key={v.id} value={v.id}>{v.label}</option>)}
+                      </select>
+                   </div>
+                   <div>
+                      <label className="text-[10px] text-zinc-500 uppercase font-bold mb-1 block">Dialogue Text</label>
+                      <textarea 
+                        className="w-full h-32 bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-sm resize-none"
+                        placeholder="Type what you want the character to say..."
+                        value={audioText}
+                        onChange={(e) => setAudioText(e.target.value)}
+                      />
+                   </div>
+                   <Button className="w-full" variant="accent" onClick={handleGenerateAudio} isLoading={isGeneratingAudio}>
+                      Generate Voice
+                   </Button>
+                </div>
+              )}
+
+              {/* Default Sidebar Content for other tabs */}
+              {!['DECK', 'CHARACTERS', 'STORYBOARD', 'POSTERS', 'AUDIO', 'SCRIPT', 'CAST_CREW'].includes(activeTab) && (
+                 <div className="p-6 text-center text-zinc-600 text-xs">
+                    <ICONS.Settings size={24} className="mx-auto mb-2 opacity-50"/>
+                    <p>Configure settings in the main view.</p>
+                 </div>
+              )}
             </div>
           </aside>
         )}
 
         <main className="flex-1 flex overflow-hidden bg-zinc-950 relative">
            
-           {/* ... (Budget Forge, Cast Crew, Vault View logic omitted for brevity as they are unchanged) ... */}
-           {/* Assume code is preserved */}
-           
-           {activeTab === 'BUDGET' && <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-y-auto"><div className="p-8 text-white">Budget Forge Active (Code Preserved)</div></div>}
-           {activeTab === 'CAST_CREW' && <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-y-auto"><div className="p-8 text-white">Cast Crew Active (Code Preserved)</div></div>}
-           {activeTab === 'VAULT' && <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-y-auto"><div className="p-8 text-white">Vault Active (Code Preserved)</div></div>}
-           {activeTab === 'TRAILER' && <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-y-auto"><div className="p-8 text-white">Trailer Active (Code Preserved)</div></div>}
-           {activeTab === 'SCRIPT' && <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-y-auto"><div className="p-8 text-white">Script Magic Active (Code Preserved)</div></div>}
-           {activeTab === 'LOCATION' && <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-y-auto"><div className="p-8 text-white">Location Scout Active (Code Preserved)</div></div>}
-           {activeTab === 'AUDIO' && <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-y-auto"><div className="p-8 text-white">Audio Active (Code Preserved)</div></div>}
+           {/* --- BUDGET FORGE TAB --- */}
+           {activeTab === 'BUDGET' && (
+             <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-y-auto">
+                <div className="max-w-6xl mx-auto w-full p-8 space-y-8">
+                   
+                   {/* Header */}
+                   <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-zinc-800 pb-6 gap-4">
+                      <div>
+                         <h2 className="text-2xl font-bold text-white cinematic-font flex items-center gap-3">
+                            <ICONS.Calculator size={24} className="text-green-500"/>
+                            BUDGET<span className="text-green-500">FORGE</span>
+                         </h2>
+                         <p className="text-zinc-500 text-sm mt-1">AI Line Producer & Cost Estimation</p>
+                      </div>
+                      
+                      <div className="flex items-center gap-4">
+                         <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-2 flex gap-2">
+                            <select 
+                               className="bg-zinc-950 text-white text-xs p-2 rounded border border-zinc-700"
+                               value={budgetScale}
+                               onChange={(e) => setBudgetScale(e.target.value as any)}
+                            >
+                               <option value="Micro/Indie">Micro/Indie</option>
+                               <option value="Mid-Range">Mid-Range</option>
+                               <option value="Blockbuster">Blockbuster</option>
+                            </select>
+                            <select 
+                               className="bg-zinc-950 text-white text-xs p-2 rounded border border-zinc-700"
+                               value={budgetCurrency}
+                               onChange={(e) => setBudgetCurrency(e.target.value as any)}
+                            >
+                               <option value="INR">INR (₹)</option>
+                               <option value="USD">USD ($)</option>
+                            </select>
+                         </div>
+                         <Button variant="accent" onClick={handleGenerateBudget} isLoading={isGeneratingBudget} className="bg-green-600 hover:bg-green-500">
+                            <ICONS.Wand2 size={16} className="mr-2"/> Generate Estimate
+                         </Button>
+                      </div>
+                   </div>
 
+                   {/* Dashboard Stats */}
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative overflow-hidden">
+                         <div className="absolute top-0 right-0 p-4 opacity-10"><ICONS.Coins size={64}/></div>
+                         <h3 className="text-zinc-500 text-xs uppercase font-bold mb-2">{t.totalBudgetTitle}</h3>
+                         <p className="text-4xl font-bold text-white tracking-tight">{formatMoney(getTotalBudget())}</p>
+                         <p className="text-zinc-500 text-xs mt-2">Estimated {budgetScale} Production</p>
+                      </div>
+                      
+                      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative overflow-hidden">
+                         <h3 className="text-zinc-500 text-xs uppercase font-bold mb-4">{t.aboveLineTitle}</h3>
+                         <div className="space-y-2">
+                            {project.budgetItems?.filter(i => i.category === 'Above The Line').slice(0, 3).map((item, idx) => (
+                               <div key={idx} className="flex justify-between text-sm">
+                                  <span className="text-zinc-300 truncate pr-4">{item.item}</span>
+                                  <span className="font-mono text-zinc-400">{formatMoney(item.cost)}</span>
+                               </div>
+                            ))}
+                         </div>
+                      </div>
+
+                      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 relative overflow-hidden">
+                         <h3 className="text-zinc-500 text-xs uppercase font-bold mb-4">{t.belowLineTitle}</h3>
+                         <div className="space-y-2">
+                            {project.budgetItems?.filter(i => i.category === 'Below The Line').slice(0, 3).map((item, idx) => (
+                               <div key={idx} className="flex justify-between text-sm">
+                                  <span className="text-zinc-300 truncate pr-4">{item.item}</span>
+                                  <span className="font-mono text-zinc-400">{formatMoney(item.cost)}</span>
+                               </div>
+                            ))}
+                         </div>
+                      </div>
+                   </div>
+
+                   {/* Full Budget Table */}
+                   <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                      <div className="p-4 bg-zinc-950 border-b border-zinc-800 flex justify-between items-center">
+                         <h3 className="font-bold text-white">Detailed Breakdown</h3>
+                         <div className="flex gap-2">
+                            <button className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 border border-zinc-800 rounded px-2 py-1 transition-colors" onClick={handleDownloadBudgetCSV}>
+                               <ICONS.FileText size={12}/> Export CSV
+                            </button>
+                            <button className="text-xs text-green-500 hover:text-white flex items-center gap-1 border border-zinc-800 rounded px-2 py-1 transition-colors" onClick={() => window.print()}>
+                               <ICONS.Download size={12}/> Print View
+                            </button>
+                         </div>
+                      </div>
+                      <table className="w-full text-left text-sm">
+                         <thead className="bg-zinc-950/50 text-zinc-500 text-xs uppercase font-bold">
+                            <tr>
+                               <th className="p-4 w-1/4">Category</th>
+                               <th className="p-4 w-1/3">Line Item</th>
+                               <th className="p-4">Notes</th>
+                               <th className="p-4 text-right">Cost</th>
+                            </tr>
+                         </thead>
+                         <tbody className="divide-y divide-zinc-800 text-zinc-300">
+                            {project.budgetItems?.map((item) => (
+                               <tr key={item.id} className="hover:bg-zinc-800/30 transition-colors">
+                                  <td className="p-4 text-zinc-500 font-bold text-xs uppercase">{item.category}</td>
+                                  <td className="p-4 font-medium">{item.item}</td>
+                                  <td className="p-4 text-zinc-500 text-xs">{item.notes}</td>
+                                  <td className="p-4 text-right font-mono text-white">{formatMoney(item.cost)}</td>
+                               </tr>
+                            ))}
+                            {(!project.budgetItems || project.budgetItems.length === 0) && (
+                               <tr>
+                                  <td colSpan={4} className="p-12 text-center text-zinc-600">
+                                     <ICONS.Calculator size={48} className="mx-auto mb-4 opacity-50"/>
+                                     <p>No budget generated yet.</p>
+                                     <p className="text-xs mt-2">Select your scale and currency, then click "Generate Estimate".</p>
+                                  </td>
+                               </tr>
+                            )}
+                         </tbody>
+                         {project.budgetItems && project.budgetItems.length > 0 && (
+                            <tfoot className="bg-zinc-950 font-bold border-t-2 border-zinc-800 text-white">
+                               <tr>
+                                  <td colSpan={3} className="p-4 text-right uppercase tracking-wider text-xs">Total Estimated Budget</td>
+                                  <td className="p-4 text-right font-mono text-lg text-green-400">{formatMoney(getTotalBudget())}</td>
+                               </tr>
+                            </tfoot>
+                         )}
+                      </table>
+                   </div>
+
+                </div>
+             </div>
+           )}
+
+           {/* ... [Cast & Crew View code - Unchanged] ... */}
+           {activeTab === 'CAST_CREW' && (
+             <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-y-auto">
+               <div className="max-w-6xl mx-auto w-full p-8 space-y-12">
+                  {/* ... Existing Cast & Crew content ... */}
+                  <section>
+                     <div className="flex justify-between items-end mb-6 border-b border-zinc-800 pb-4">
+                        <div>
+                           <h2 className="text-2xl font-bold text-white cinematic-font tracking-wide flex items-center gap-3">
+                              <ICONS.Users size={24} className="text-emerald-500"/>
+                              THE CAST
+                           </h2>
+                           <p className="text-zinc-500 text-sm mt-1">Character visualizations and proposed talent.</p>
+                        </div>
+                        <Button variant="accent" onClick={handleAddCastMember} icon={<ICONS.Plus size={16}/>}>
+                           Add Casting Row
+                        </Button>
+                     </div>
+
+                     <div className="space-y-6">
+                        {project.castList?.map((cast, index) => (
+                           <div key={cast.id} className="relative bg-zinc-900 border border-zinc-800 rounded-xl p-4 flex flex-col md:flex-row gap-6 items-center group hover:border-emerald-600/50 transition-colors">
+                              {/* Remove Button */}
+                              <button 
+                                 onClick={() => handleDeleteCastMember(cast.id)}
+                                 className="absolute top-2 right-2 text-zinc-600 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                 <ICONS.Trash2 size={16}/>
+                              </button>
+
+                              {/* Index */}
+                              <div className="text-zinc-600 font-mono font-bold text-xl opacity-30 md:block hidden">
+                                 {String(index + 1).padStart(2, '0')}
+                              </div>
+
+                              {/* LEFT: CHARACTER */}
+                              <div className="flex-1 w-full">
+                                 <label className="text-[10px] font-bold text-zinc-500 uppercase mb-2 block tracking-wider">Role / Character</label>
+                                 <div className="flex gap-4">
+                                    <div className="w-24 h-24 bg-zinc-950 rounded-lg border border-zinc-800 flex items-center justify-center relative overflow-hidden shrink-0 group/img">
+                                       {cast.characterImage ? (
+                                          <img src={cast.characterImage} className="w-full h-full object-cover"/>
+                                       ) : (
+                                          <ICONS.User size={24} className="text-zinc-700"/>
+                                       )}
+                                       <label className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/img:opacity-100 cursor-pointer transition-opacity">
+                                          <ICONS.Upload size={16} className="text-white"/>
+                                          <input type="file" className="hidden" accept="image/*" onChange={(e) => handleCastImageUpload(e, cast.id, 'characterImage')}/>
+                                       </label>
+                                    </div>
+                                    <div className="flex-1 flex flex-col justify-center">
+                                       <input 
+                                          className="w-full bg-transparent text-lg font-bold text-white placeholder-zinc-700 outline-none border-b border-transparent focus:border-emerald-500 transition-colors"
+                                          placeholder="Character Name"
+                                          value={cast.characterName}
+                                          onChange={(e) => handleUpdateCastMember(cast.id, { characterName: e.target.value })}
+                                       />
+                                       <p className="text-xs text-zinc-500 mt-1">Concept Visual</p>
+                                    </div>
+                                 </div>
+                              </div>
+
+                              {/* ARROW */}
+                              <div className="text-zinc-700">
+                                 <ICONS.ArrowRight size={24} />
+                              </div>
+
+                              {/* RIGHT: ACTOR */}
+                              <div className="flex-1 w-full text-right md:text-left md:flex-row-reverse flex gap-4">
+                                 <div className="w-24 h-24 bg-zinc-950 rounded-lg border border-zinc-800 flex items-center justify-center relative overflow-hidden shrink-0 group/img">
+                                       {cast.actorImage ? (
+                                          <img src={cast.actorImage} className="w-full h-full object-cover"/>
+                                       ) : (
+                                          <ICONS.User size={24} className="text-zinc-700"/>
+                                       )}
+                                       <label className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover/img:opacity-100 cursor-pointer transition-opacity">
+                                          <ICONS.Upload size={16} className="text-white"/>
+                                          <input type="file" className="hidden" accept="image/*" onChange={(e) => handleCastImageUpload(e, cast.id, 'actorImage')}/>
+                                       </label>
+                                 </div>
+                                 <div className="flex-1 flex flex-col justify-center items-end md:items-start">
+                                       <input 
+                                          className="w-full bg-transparent text-lg font-bold text-white placeholder-zinc-700 outline-none border-b border-transparent focus:border-emerald-500 transition-colors text-right md:text-left"
+                                          placeholder="Proposed Actor"
+                                          value={cast.actorName}
+                                          onChange={(e) => handleUpdateCastMember(cast.id, { actorName: e.target.value })}
+                                       />
+                                       <p className="text-xs text-zinc-500 mt-1">Talent Headshot</p>
+                                 </div>
+                              </div>
+
+                           </div>
+                        ))}
+                        {(!project.castList || project.castList.length === 0) && (
+                           <div className="text-center py-12 border-2 border-dashed border-zinc-800 rounded-xl bg-zinc-900/30">
+                              <ICONS.Users className="mx-auto text-zinc-700 mb-4" size={48}/>
+                              <p className="text-zinc-500">No cast members added yet.</p>
+                              <Button variant="secondary" onClick={handleAddCastMember} className="mt-4">Start Casting</Button>
+                           </div>
+                        )}
+                     </div>
+                  </section>
+
+                  {/* SECTION 2: CREW TABLE */}
+                  <section>
+                     <div className="flex justify-between items-end mb-6 border-b border-zinc-800 pb-4">
+                        <div>
+                           <h2 className="text-2xl font-bold text-white cinematic-font tracking-wide flex items-center gap-3">
+                              <ICONS.Briefcase size={24} className="text-blue-500"/>
+                              THE CREW
+                           </h2>
+                           <p className="text-zinc-500 text-sm mt-1">Key production roles and heads of department.</p>
+                        </div>
+                        <Button variant="secondary" onClick={handleAddCrewMember} icon={<ICONS.Plus size={16}/>}>
+                           Add Crew Member
+                        </Button>
+                     </div>
+
+                     <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                        <table className="w-full text-left">
+                           <thead className="bg-zinc-950 text-zinc-500 text-xs uppercase font-bold tracking-wider">
+                              <tr>
+                                 <th className="p-4 w-1/3">Role / Department</th>
+                                 <th className="p-4">Name</th>
+                                 <th className="p-4 w-16"></th>
+                              </tr>
+                           </thead>
+                           <tbody className="divide-y divide-zinc-800">
+                              {project.crewList?.map((crew) => (
+                                 <tr key={crew.id} className="group hover:bg-zinc-800/30 transition-colors">
+                                    <td className="p-4">
+                                       <input 
+                                          className="w-full bg-transparent text-sm font-bold text-zinc-300 placeholder-zinc-600 outline-none focus:text-blue-400 transition-colors"
+                                          placeholder="e.g. Director"
+                                          value={crew.role}
+                                          onChange={(e) => handleUpdateCrewMember(crew.id, { role: e.target.value })}
+                                       />
+                                    </td>
+                                    <td className="p-4">
+                                       <input 
+                                          className="w-full bg-transparent text-sm text-white placeholder-zinc-700 outline-none focus:text-white"
+                                          placeholder="Enter Name"
+                                          value={crew.name}
+                                          onChange={(e) => handleUpdateCrewMember(crew.id, { name: e.target.value })}
+                                       />
+                                    </td>
+                                    <td className="p-4 text-right">
+                                       <button 
+                                          onClick={() => handleDeleteCrewMember(crew.id)}
+                                          className="text-zinc-600 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                       >
+                                          <ICONS.Trash2 size={14}/>
+                                       </button>
+                                    </td>
+                                 </tr>
+                              ))}
+                           </tbody>
+                        </table>
+                        {(!project.crewList || project.crewList.length === 0) && (
+                           <div className="p-8 text-center text-zinc-500 text-sm italic">
+                              No crew roles defined.
+                           </div>
+                        )}
+                     </div>
+                  </section>
+
+               </div>
+             </div>
+           )}
+
+           {/* ... [Vault View code - Unchanged] ... */}
+           {activeTab === 'VAULT' && (
+             <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-y-auto">
+                <div className="max-w-6xl mx-auto w-full p-8">
+                   
+                   <div className="flex justify-between items-center mb-8">
+                      <div>
+                         <h2 className="text-2xl font-bold text-white cinematic-font flex items-center gap-3">
+                            <ICONS.Box size={24} className="text-orange-500"/>
+                            CINEMA VAULT
+                         </h2>
+                         <p className="text-zinc-500 text-sm mt-1">Research, legal, and creative asset storage.</p>
+                      </div>
+                      
+                      <div className="flex items-center gap-4">
+                         {/* Filter Tabs */}
+                         <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-1 flex">
+                            {['ALL', 'IMAGE', 'VIDEO', 'DOCS'].map(filter => (
+                               <button 
+                                 key={filter}
+                                 onClick={() => setVaultFilter(filter as any)}
+                                 className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${vaultFilter === filter ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-zinc-300'}`}
+                               >
+                                  {filter}
+                               </button>
+                            ))}
+                         </div>
+                         
+                         {/* Upload Button */}
+                         <label className="flex items-center gap-2 bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-md cursor-pointer transition-colors font-bold text-sm shadow-lg shadow-orange-900/20">
+                            <ICONS.Upload size={16}/>
+                            Upload Assets
+                            <input 
+                               type="file" 
+                               multiple 
+                               className="hidden" 
+                               onChange={handleVaultUpload}
+                            />
+                         </label>
+                      </div>
+                   </div>
+
+                   {/* VAULT GRID */}
+                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                      {getFilteredVaultItems().map((item) => (
+                         <div key={item.id} className="group bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden hover:border-orange-500/50 transition-all flex flex-col relative">
+                            {/* ... Vault Item Card ... */}
+                            <div className="aspect-square bg-zinc-950 relative flex items-center justify-center overflow-hidden">
+                               {item.type === 'IMAGE' && <img src={item.url} className="w-full h-full object-cover"/>}
+                               {/* ... other types ... */}
+                               {item.type === 'VIDEO' && (
+                                  <div className="w-full h-full relative">
+                                     <video src={item.url} className="w-full h-full object-cover"/>
+                                     <div className="absolute inset-0 flex items-center justify-center bg-black/20"><ICONS.Play size={32} className="text-white opacity-80"/></div>
+                                  </div>
+                               )}
+                               {item.type === 'PDF' && <ICONS.FileText size={48} className="text-red-500"/>}
+                               {item.type === 'TEXT' && <ICONS.FileText size={48} className="text-zinc-500"/>}
+                               {item.type === 'ARCHIVE' && <ICONS.Archive size={48} className="text-yellow-500"/>}
+                               {item.type === 'AUDIO' && <ICONS.Mic size={48} className="text-pink-500"/>}
+                               {item.type === 'UNKNOWN' && <ICONS.File size={48} className="text-zinc-600"/>}
+
+                               {/* Hover Actions */}
+                               <div className="absolute inset-0 bg-black/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-2 p-4 text-center">
+                                  <div className="flex gap-2">
+                                     <button 
+                                       onClick={() => setEditingVaultItem(item)} 
+                                       className="p-2 bg-zinc-800 rounded-full hover:bg-white hover:text-black transition-colors"
+                                       title="Edit Details"
+                                     >
+                                        <ICONS.Settings size={16}/>
+                                     </button>
+                                     <a 
+                                       href={item.url} 
+                                       download={item.fileName}
+                                       className="p-2 bg-zinc-800 rounded-full hover:bg-white hover:text-black transition-colors"
+                                       title="Download"
+                                     >
+                                        <ICONS.Download size={16}/>
+                                     </a>
+                                     <button 
+                                       onClick={() => deleteVaultItem(item.id)}
+                                       className="p-2 bg-zinc-800 rounded-full hover:bg-red-600 hover:text-white transition-colors"
+                                       title="Delete"
+                                     >
+                                        <ICONS.Trash2 size={16}/>
+                                     </button>
+                                  </div>
+                                  <p className="text-[10px] text-zinc-400 mt-2 line-clamp-3">
+                                     {item.description || "No description provided."}
+                                  </p>
+                               </div>
+                            </div>
+
+                            {/* INFO AREA */}
+                            <div className="p-3 bg-zinc-900 border-t border-zinc-800">
+                               <div className="flex items-center gap-2 mb-1">
+                                  {item.type === 'PDF' && <ICONS.FileText size={12} className="text-red-500"/>}
+                                  {item.type === 'IMAGE' && <ICONS.Image size={12} className="text-blue-500"/>}
+                                  {item.type === 'VIDEO' && <ICONS.Video size={12} className="text-purple-500"/>}
+                                  <h4 className="text-xs font-bold text-zinc-200 truncate flex-1">{item.title}</h4>
+                               </div>
+                               <div className="flex justify-between text-[10px] text-zinc-600">
+                                  <span>{item.fileSize}</span>
+                                  <span>{new Date(item.createdAt).toLocaleDateString()}</span>
+                               </div>
+                            </div>
+                         </div>
+                      ))}
+                      
+                      {/* Empty State */}
+                      {getFilteredVaultItems().length === 0 && (
+                         <div className="col-span-full py-20 text-center border-2 border-dashed border-zinc-800 rounded-xl bg-zinc-900/20">
+                            <ICONS.Box size={48} className="mx-auto text-zinc-700 mb-4"/>
+                            <h3 className="text-zinc-400 font-bold">Vault Empty</h3>
+                            <p className="text-zinc-600 text-sm mt-1">Upload research, documents, or media to secure them.</p>
+                         </div>
+                      )}
+                   </div>
+
+                   {/* EDIT MODAL */}
+                   {editingVaultItem && (
+                      <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
+                         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 max-w-md w-full shadow-2xl">
+                            <h3 className="text-lg font-bold text-white mb-4">Edit Asset Details</h3>
+                            <div className="space-y-4">
+                               <div>
+                                  <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Title</label>
+                                  <input 
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-sm"
+                                    value={editingVaultItem.title}
+                                    onChange={(e) => setEditingVaultItem({...editingVaultItem, title: e.target.value})}
+                                  />
+                               </div>
+                               <div>
+                                  <label className="text-xs font-bold text-zinc-500 uppercase block mb-1">Context Note</label>
+                                  <textarea 
+                                    className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-sm h-24 resize-none"
+                                    placeholder="Add context about this file..."
+                                    value={editingVaultItem.description}
+                                    onChange={(e) => setEditingVaultItem({...editingVaultItem, description: e.target.value})}
+                                  />
+                               </div>
+                               <div className="flex justify-end gap-2 pt-2">
+                                  <Button variant="ghost" onClick={() => setEditingVaultItem(null)}>Cancel</Button>
+                                  <Button variant="accent" onClick={() => {
+                                     updateVaultItem(editingVaultItem.id, { 
+                                        title: editingVaultItem.title, 
+                                        description: editingVaultItem.description 
+                                     });
+                                     setEditingVaultItem(null);
+                                  }}>Save Changes</Button>
+                               </div>
+                            </div>
+                         </div>
+                      </div>
+                   )}
+
+                </div>
+             </div>
+           )}
+
+           {/* ... [Main Content Rendering for Deck, Poster, etc. - Unchanged] ... */}
            {activeTab === 'DECK' && slide && (
              <>
               <div className="flex-1 p-8 flex flex-col items-center justify-center relative overflow-hidden bg-zinc-900/30">
                  <div className="w-full aspect-video bg-black shadow-2xl relative group rounded-md overflow-hidden ring-1 ring-zinc-800">
+                    {/* NO GRADIENT OR TEXT OVERLAY IN PREVIEW - CLEAN IMAGE */}
                     <img src={slide.imageUrl || PLACEHOLDER_IMAGE} className={`absolute inset-0 w-full h-full object-cover ${slide.imageUrl ? 'opacity-100' : 'opacity-30 grayscale'}`}/>
                  </div>
               </div>
               <div className="w-96 border-l border-zinc-800 bg-zinc-900 flex flex-col overflow-y-auto p-6 space-y-6">
-                 {/* ... (Deck Sidebar Content Preserved) ... */}
+                 <section>
+                   {/* INFO BOX HERE */}
+                   {slide.description && (
+                     <div className="bg-zinc-950/50 border border-zinc-800 rounded-lg p-4 mb-6 shadow-sm">
+                       <div className="flex items-center gap-2 mb-2">
+                         <ICONS.Info size={14} className="text-amber-500" />
+                         <span className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Slide Objective</span>
+                       </div>
+                       <p className="text-sm text-zinc-200 leading-relaxed font-medium">{slide.description}</p>
+                     </div>
+                   )}
+
+                   <div className="flex justify-between items-baseline mb-2">
+                     <h3 className="text-xs font-bold text-amber-500">TEXT CONTENT</h3>
+                     <Button variant="ghost" className="text-xs h-6 px-2 text-zinc-400" onClick={onGenerateContent} isLoading={isGeneratingContent}>AI Write</Button>
+                   </div>
+                   
+                   <textarea 
+                     className="w-full h-32 bg-zinc-950 border border-zinc-800 rounded p-3 text-sm text-zinc-300 outline-none focus:ring-1 focus:ring-amber-900" 
+                     value={slide.content} 
+                     onChange={(e) => onUpdateSlide(slide.id, { content: e.target.value })} 
+                     placeholder={slide.placeholder || t.textContent}
+                   />
+                 </section>
                  <section>
                     <div className="flex justify-between mb-2"><h3 className="text-xs font-bold text-amber-500">VISUALS</h3></div>
                     <select className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-xs text-zinc-300 mb-2" onChange={handleStyleChange} value={selectedStyle}><option value="">Director Style...</option>{DIRECTOR_STYLES.map(s => <option key={s} value={s}>{s}</option>)}</select>
@@ -960,14 +1472,201 @@ export const StudioView: React.FC<StudioViewProps> = ({
                        <button className="absolute bottom-2 right-2 text-amber-500 hover:text-amber-400" onClick={() => onAutoPrompt(selectedStyle)} disabled={isGeneratingPrompt}><ICONS.Wand2 size={14} /></button>
                     </div>
                     <Button className="w-full" variant="accent" onClick={onGenerateImage} disabled={!slide.imagePrompt} isLoading={isGeneratingImage}>Generate Image</Button>
+                    <label className="flex items-center justify-center w-full mt-2 py-2 border border-zinc-800 rounded text-xs text-zinc-500 hover:bg-zinc-800 cursor-pointer transition-colors">
+                      <ICONS.Upload size={12} className="mr-2"/> Upload Custom Image
+                      <input type="file" accept="image/*" onChange={onFileUpload} className="hidden" />
+                    </label>
                  </section>
               </div>
              </>
            )}
 
-           {activeTab === 'CHARACTERS' && activeCharacter && (
-                <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-hidden relative">
-                   {/* ... (Character View Preserved) ... */}
+           {/* --- NEW SCRIPT MAGIC SECTION --- */}
+           {activeTab === 'SCRIPT' && (
+             <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-hidden relative">
+               
+               {/* SCRIPT TOOLBAR */}
+               <div className="h-16 border-b border-zinc-800 bg-zinc-900/50 flex items-center justify-between px-6 shrink-0">
+                  <h2 className="text-lg font-bold text-white flex items-center gap-2 cinematic-font tracking-wide">
+                     <ICONS.ScrollText size={20} className="text-indigo-500"/>
+                     SCRIPT <span className="text-indigo-500">MAGIC</span>
+                  </h2>
+                  <div className="flex gap-2">
+                     <Button variant="secondary" className="text-xs" onClick={handleGenerateRoadmap} isLoading={isGeneratingRoadmap}>
+                        <ICONS.Wand2 size={14} className="mr-2"/> Generate Roadmap
+                     </Button>
+                  </div>
+               </div>
+
+               <div className="flex-1 flex overflow-hidden">
+                  
+                  {/* LEFT PANE: CINEMATIC ROADMAP (12-POINT) */}
+                  <div className="w-80 border-r border-zinc-800 bg-zinc-900/30 flex flex-col">
+                     <div className="p-4 border-b border-zinc-800 bg-zinc-900/50 sticky top-0 z-10">
+                        <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">The Seed Concept</h3>
+                        <textarea 
+                           className="w-full h-24 bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-sm text-white resize-none focus:border-indigo-500 outline-none"
+                           placeholder="Enter your 20-line story idea here..."
+                           value={scriptConcept}
+                           onChange={(e) => setScriptConcept(e.target.value)}
+                        />
+                     </div>
+                     <div className="flex-1 overflow-y-auto p-2 space-y-2">
+                        {project.scriptRoadmap?.map((beat, idx) => (
+                           <div 
+                              key={beat.id}
+                              onClick={() => handleBeatClick(beat)}
+                              className={`p-3 rounded-lg border cursor-pointer transition-all ${activeBeatId === beat.id ? 'bg-indigo-900/20 border-indigo-500 shadow-lg' : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-600'}`}
+                           >
+                              <div className="flex justify-between items-start mb-1">
+                                 <span className="text-[10px] font-mono text-zinc-500 font-bold">BEAT {idx + 1}</span>
+                                 {activeBeatId === beat.id && isGeneratingTwist && <ICONS.Loader2 size={12} className="animate-spin text-indigo-500"/>}
+                              </div>
+                              <h4 className={`text-sm font-bold mb-1 ${activeBeatId === beat.id ? 'text-white' : 'text-zinc-300'}`}>{beat.title}</h4>
+                              <p className="text-xs text-zinc-500 leading-snug">{beat.aiSuggestion || beat.description}</p>
+                           </div>
+                        ))}
+                        {(!project.scriptRoadmap || project.scriptRoadmap.length === 0) && (
+                           <div className="p-8 text-center text-zinc-600">
+                              <ICONS.Layers size={32} className="mx-auto mb-2 opacity-50"/>
+                              <p className="text-xs">Enter your concept above and click "Generate Roadmap" to create the 12-point structure.</p>
+                           </div>
+                        )}
+                     </div>
+                  </div>
+
+                  {/* CENTER PANE: SCRIPT EDITOR */}
+                  <div className="flex-1 flex flex-col bg-[#1a1a1a] relative">
+                     <div className="flex-1 overflow-y-auto p-8 flex justify-center">
+                        <div className="w-full max-w-3xl h-full">
+                           <textarea 
+                              className="w-full h-full min-h-[800px] bg-transparent text-zinc-300 font-mono text-base leading-relaxed outline-none resize-none selection:bg-indigo-500/30 pb-32"
+                              placeholder="INT. SCENE 1 - DAY..."
+                              value={project.fullScript}
+                              onChange={(e) => onUpdateProject && onUpdateProject({ fullScript: e.target.value })}
+                              spellCheck={false}
+                           />
+                        </div>
+                     </div>
+                  </div>
+
+                  {/* RIGHT PANE / OVERLAY: TWIST ENGINE */}
+                  {activeBeatId && (
+                     <div className="w-96 border-l border-zinc-800 bg-zinc-900 flex flex-col animate-in slide-in-from-right duration-300 shadow-2xl z-20">
+                        <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-950/80 backdrop-blur">
+                           <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                              <ICONS.Sparkles size={16} className="text-indigo-500"/> Twist Engine
+                           </h3>
+                           <button onClick={() => setActiveBeatId(null)} className="text-zinc-500 hover:text-white"><ICONS.X size={16}/></button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                           {isGeneratingTwist ? (
+                              <div className="flex flex-col items-center justify-center h-64 text-zinc-500 space-y-4">
+                                 <div className="relative">
+                                    <div className="w-12 h-12 border-4 border-zinc-800 rounded-full"></div>
+                                    <div className="w-12 h-12 border-4 border-t-indigo-500 rounded-full absolute top-0 left-0 animate-spin"></div>
+                                 </div>
+                                 <p className="text-xs animate-pulse">Consulting the Creative Director...</p>
+                              </div>
+                           ) : (
+                              twistOptions.map((opt, idx) => (
+                                 <div key={idx} className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 hover:border-indigo-500/50 transition-all group relative overflow-hidden">
+                                    <div className={`absolute top-0 left-0 w-1 h-full ${
+                                       opt.type === 'Classic' ? 'bg-blue-500' :
+                                       opt.type === 'Emotional' ? 'bg-pink-500' : 'bg-amber-500'
+                                    }`}></div>
+                                    
+                                    <div className="pl-3">
+                                       <div className="flex justify-between items-start mb-2">
+                                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider ${
+                                             opt.type === 'Classic' ? 'bg-blue-900/30 text-blue-400' :
+                                             opt.type === 'Emotional' ? 'bg-pink-900/30 text-pink-400' : 'bg-amber-900/30 text-amber-400'
+                                          }`}>{opt.type} Path</span>
+                                       </div>
+                                       <h4 className="text-sm font-bold text-white mb-2">{opt.title}</h4>
+                                       <p className="text-xs text-zinc-400 leading-relaxed mb-4">{opt.content}</p>
+                                       <Button 
+                                          variant="secondary" 
+                                          className="w-full text-xs h-8 group-hover:bg-indigo-600 group-hover:text-white group-hover:border-indigo-500 transition-colors"
+                                          onClick={() => handleApplyTwist(opt.content)}
+                                       >
+                                          <ICONS.Plus size={14} className="mr-2"/> Add to Script
+                                       </Button>
+                                    </div>
+                                 </div>
+                              ))
+                           )}
+                           
+                           {!isGeneratingTwist && twistOptions.length > 0 && (
+                              <Button 
+                                 variant="ghost" 
+                                 className="w-full text-xs text-zinc-500 hover:text-white"
+                                 onClick={() => {
+                                    const beat = project.scriptRoadmap?.find(b => b.id === activeBeatId);
+                                    if (beat) handleBeatClick(beat);
+                                 }}
+                              >
+                                 <ICONS.RotateCcw size={14} className="mr-2"/> Spin Again (Regenerate)
+                              </Button>
+                           )}
+                        </div>
+                     </div>
+                  )}
+               </div>
+             </div>
+           )}
+
+           {activeTab === 'CHARACTERS' && (
+             activeCharacter ? (
+             <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-hidden relative">
+                {isFullscreenPreview && activeCharacter.imageUrl && (
+                  <div className="absolute inset-0 z-50 bg-black/95 flex items-center justify-center p-8 cursor-zoom-out" onClick={() => setIsFullscreenPreview(false)}>
+                    <img src={activeCharacter.imageUrl} className="max-w-full max-h-full object-contain drop-shadow-2xl border border-zinc-800"/>
+                  </div>
+                )}
+                {/* Character Preview */}
+                <div className="h-[50vh] min-h-[400px] border-b border-zinc-800 flex bg-zinc-900/20 shrink-0">
+                    <div className="flex-1 p-4 flex items-center justify-center relative">
+                      <div className="h-full relative group cursor-zoom-in flex items-center justify-center" onClick={() => setIsFullscreenPreview(true)}>
+                         <img src={activeCharacter.imageUrl || PLACEHOLDER_IMAGE} className={`max-h-full max-w-full object-contain rounded border border-zinc-800 shadow-xl ${activeCharacter.imageUrl ? '' : 'opacity-10 grayscale'}`} />
+                         {!activeCharacter.imageUrl && <div className="absolute inset-0 flex items-center justify-center pointer-events-none"><div className="text-center"><ICONS.User size={48} className="text-zinc-700 mx-auto mb-2"/><p className="text-zinc-600 text-xs">Preview Area</p></div></div>}
+                      </div>
+                   </div>
+                   <div className="w-64 border-l border-zinc-800 flex flex-col bg-zinc-900/50 divide-y divide-zinc-800 overflow-y-auto">
+                        <div className="flex-1 p-4 flex flex-col items-center justify-center relative">
+                        <p className="text-[10px] text-amber-500 mb-2 uppercase tracking-widest font-bold flex items-center gap-1">
+                           <ICONS.User size={12}/> Face Ref (Identity)
+                        </p>
+                        <div className="w-full aspect-square bg-zinc-900 border border-dashed border-zinc-700 rounded flex items-center justify-center relative group">
+                           {activeCharacter.referenceImageUrl ? (
+                              <img src={activeCharacter.referenceImageUrl} className="w-full h-full object-cover rounded opacity-80" />
+                           ) : (
+                              <ICONS.Plus className="text-zinc-600"/>
+                           )}
+                           <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleCharacterRefUpload(e, 'FACE')}/>
+                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs text-white pointer-events-none transition-opacity">Change</div>
+                        </div>
+                      </div>
+
+                      <div className="flex-1 p-4 flex flex-col items-center justify-center relative">
+                        <p className="text-[10px] text-blue-500 mb-2 uppercase tracking-widest font-bold flex items-center gap-1">
+                           <ICONS.Activity size={12}/> Pose Ref (Body)
+                        </p>
+                        <div className="w-full aspect-square bg-zinc-900 border border-dashed border-zinc-700 rounded flex items-center justify-center relative group">
+                           {activeCharacter.actionReferenceImageUrl ? (
+                              <img src={activeCharacter.actionReferenceImageUrl} className="w-full h-full object-cover rounded opacity-80" />
+                           ) : (
+                              <ICONS.Plus className="text-zinc-600"/>
+                           )}
+                           <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => handleCharacterRefUpload(e, 'ACTION')}/>
+                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-xs text-white pointer-events-none transition-opacity">Change</div>
+                        </div>
+                      </div>
+                   </div>
+                </div>
+                {/* Character Form Inputs */}
+                <div className="flex-1 bg-zinc-900 overflow-y-auto">
                    <div className="max-w-7xl mx-auto p-6">
                       <div className="mb-8 p-4 bg-zinc-950 border border-zinc-800 rounded-xl relative">
                         <div className="flex justify-between items-end mb-2">
@@ -981,30 +1680,173 @@ export const StudioView: React.FC<StudioViewProps> = ({
                            </div>
                         </div>
                       </div>
+                      <div className="grid grid-cols-4 gap-6 opacity-80 hover:opacity-100 transition-opacity">
+                         <div className="space-y-4">
+                            <h3 className="text-xs font-bold text-zinc-500 uppercase border-b border-zinc-800 pb-2">1. Identity</h3>
+                            <div><label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">Full Name</label><input className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-sm outline-none" value={activeCharacter.name} onChange={(e) => onUpdateCharacter(activeCharacter.id, { name: e.target.value })} /></div>
+                            <div><label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">Role Type</label><select className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-sm outline-none" value={activeCharacter.roleType} onChange={(e) => onUpdateCharacter(activeCharacter.id, { roleType: e.target.value as any })}>{ROLE_TYPES.map(r => <option key={r} value={r}>{r}</option>)}</select></div>
+                         </div>
+                         <div className="space-y-4">
+                            <h3 className="text-xs font-bold text-zinc-500 uppercase border-b border-zinc-800 pb-2">2. Anatomy</h3>
+                            <div><label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">Gender</label><input className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-sm outline-none" value={activeCharacter.gender} onChange={(e) => onUpdateCharacter(activeCharacter.id, { gender: e.target.value })} /></div>
+                            <div><label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">Body Type</label><select className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-sm outline-none" value={activeCharacter.bodyType} onChange={(e) => onUpdateCharacter(activeCharacter.id, { bodyType: e.target.value })}>{BODY_TYPES.map(b => <option key={b} value={b}>{b}</option>)}</select></div>
+                         </div>
+                         <div className="space-y-4">
+                            <h3 className="text-xs font-bold text-zinc-500 uppercase border-b border-zinc-800 pb-2">3. Style & Origin</h3>
+                            <div><label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">Nationality</label><input className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-sm outline-none" value={activeCharacter.nationality} onChange={(e) => onUpdateCharacter(activeCharacter.id, { nationality: e.target.value })} /></div>
+                            <div><label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">Era</label><input className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-sm outline-none" value={activeCharacter.era} onChange={(e) => onUpdateCharacter(activeCharacter.id, { era: e.target.value })} /></div>
+                         </div>
+                         <div className="space-y-4">
+                            <h3 className="text-xs font-bold text-zinc-500 uppercase border-b border-zinc-800 pb-2">4. Performance</h3>
+                            <div><label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">Expression</label><select className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-sm outline-none" value={activeCharacter.expression} onChange={(e) => onUpdateCharacter(activeCharacter.id, { expression: e.target.value })}>{EXPRESSIONS.map(ex => <option key={ex} value={ex}>{ex}</option>)}</select></div>
+                            <div><label className="text-[10px] text-zinc-400 uppercase tracking-wider block mb-1">Render Style</label><select className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-sm outline-none" onChange={(e) => onUpdateCharacter(activeCharacter.id, { visualPrompt: activeCharacter.visualPrompt + " " + e.target.value })}>{CHARACTER_STYLES.map(s => <option key={s} value={s}>{s}</option>)}</select></div>
+                         </div>
+                      </div>
                    </div>
                 </div>
+             </div>
+             ) : (
+                renderEmptyState(ICONS.Users, "No Character Selected", "Create a new character.", createNewCharacter, "Create Character")
+             )
            )}
 
-           {activeTab === 'POSTERS' && activePoster && (
+           {activeTab === 'POSTERS' && (
+             activePoster ? (
+             <>
                <div className="flex-1 p-8 flex flex-col items-center justify-center bg-zinc-950 relative">
-                  {/* ... (Poster Content Preserved) ... */}
                   <div className={`transition-all duration-300 bg-zinc-900 shadow-2xl border border-zinc-800 relative overflow-hidden group ${activePoster.aspectRatio === '2:3' ? 'h-[75vh] aspect-[2/3]' : activePoster.aspectRatio === '16:9' ? 'w-[80%] aspect-video' : 'h-[65vh] aspect-square'}`}>
                      {activePoster.imageUrl ? <img src={activePoster.imageUrl} className="w-full h-full object-contain" /> : <div className="w-full h-full flex items-center justify-center"><ICONS.Image size={64} className="opacity-20"/></div>}
+                     <div className="absolute inset-0 flex flex-col items-center justify-end pb-20 text-center bg-gradient-to-t from-black via-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <h1 className="text-4xl font-bold text-white uppercase tracking-widest drop-shadow-xl cinematic-font">{activePoster.title}</h1>
+                        <p className="text-amber-500 tracking-widest text-sm mt-2 uppercase">{activePoster.tagline}</p>
+                     </div>
                   </div>
-                  <div className="w-80 border-l border-zinc-800 bg-zinc-900 p-6 space-y-6 overflow-y-auto absolute right-0 top-0 bottom-0">
-                     <Button className="w-full py-4 text-sm font-bold" variant="accent" onClick={() => {
-                        const finalPrompt = `Movie Poster Art. Title: "${activePoster.title}". ${activePoster.prompt}. Composition: ${posterComposition}. Colors: ${posterPalette}. High resolution, cinematic key art, textless --ar ${activePoster.aspectRatio.replace(':','-')}`;
-                        handleGenerateAssetImage(finalPrompt, 'POSTER', activePoster.id, activePoster.aspectRatio);
-                     }} isLoading={isAssetGenerating}>
-                        <ICONS.Wand2 size={16} className="mr-2"/> Generate Poster
-                     </Button>
-                  </div>
+
+                  {/* DOWNLOAD BUTTON */}
+                  {activePoster.imageUrl && (
+                    <div className="mt-4 flex gap-2 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                      <Button variant="secondary" className="bg-zinc-800 text-white border-zinc-700 hover:bg-zinc-700 hover:text-white" onClick={() => handleDownloadImage(activePoster.imageUrl, `${activePoster.title.replace(/\s+/g,'_')}_Poster.png`)}>
+                        <ICONS.Download size={18} className="mr-2"/> Download Poster
+                      </Button>
+                    </div>
+                  )}
                </div>
+
+               <div className="w-80 border-l border-zinc-800 bg-zinc-900 p-6 space-y-6 overflow-y-auto">
+                 {/* ... Poster Sidebar ... */}
+                 <h2 className="text-lg font-bold text-white flex items-center gap-2"><ICONS.Image size={20} className="text-green-500"/> Poster Studio</h2>
+                 <div className="space-y-4">
+                   {/* ASPECT RATIO BUTTONS */}
+                   <div className="grid grid-cols-3 gap-2">
+                       <button onClick={() => onUpdatePoster(activePoster.id, { aspectRatio: '2:3' })} className={`p-2 rounded border flex flex-col items-center gap-1 ${activePoster.aspectRatio === '2:3' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-500'}`}>
+                           <ICONS.RectangleVertical size={16}/>
+                           <span className="text-[10px]">9:16</span>
+                       </button>
+                       <button onClick={() => onUpdatePoster(activePoster.id, { aspectRatio: '1:1' })} className={`p-2 rounded border flex flex-col items-center gap-1 ${activePoster.aspectRatio === '1:1' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-500'}`}>
+                           <ICONS.Square size={16}/>
+                           <span className="text-[10px]">1:1</span>
+                       </button>
+                       <button onClick={() => onUpdatePoster(activePoster.id, { aspectRatio: '16:9' })} className={`p-2 rounded border flex flex-col items-center gap-1 ${activePoster.aspectRatio === '16:9' ? 'bg-amber-600 border-amber-500 text-white' : 'bg-zinc-950 border-zinc-800 text-zinc-500'}`}>
+                           <ICONS.RectangleHorizontal size={16}/>
+                           <span className="text-[10px]">16:9</span>
+                       </button>
+                   </div>
+                   
+                   {/* CHARACTER REFERENCE FOR POSTER */}
+                   <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg space-y-3">
+                      <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-2">
+                         <ICONS.User size={12}/> Starring / Reference
+                      </h4>
+                      <div>
+                         <label className="text-[10px] text-zinc-400 block mb-1">Select Character</label>
+                         <select 
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white text-xs mb-2"
+                            value={activePoster.characterRefId || ""}
+                            onChange={(e) => onUpdatePoster(activePoster.id, { characterRefId: e.target.value })}
+                         >
+                            <option value="">-- No Specific Character --</option>
+                            {project.characters?.map(c => (
+                               <option key={c.id} value={c.id}>{c.name} ({c.roleType})</option>
+                            ))}
+                         </select>
+                      </div>
+                      
+                      <div className="relative border-t border-zinc-900 pt-2">
+                         <label className="text-[10px] text-zinc-400 block mb-1">Or Upload Reference Image</label>
+                         <div className="flex items-center gap-2">
+                            <div className="w-10 h-10 bg-zinc-900 rounded border border-dashed border-zinc-700 flex items-center justify-center relative overflow-hidden group">
+                               {activePoster.referenceImageUrl ? (
+                                  <img src={activePoster.referenceImageUrl} className="w-full h-full object-cover"/>
+                               ) : (
+                                  <ICONS.Upload size={14} className="text-zinc-600"/>
+                               )}
+                               <input type="file" accept="image/*" className="absolute inset-0 opacity-0 cursor-pointer" onChange={handlePosterRefUpload} />
+                            </div>
+                            <span className="text-[10px] text-zinc-500 italic">
+                               {activePoster.referenceImageUrl ? "Reference Loaded" : "Upload File"}
+                            </span>
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg space-y-3">
+                      <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Content</h4>
+                      <div><label className="text-[10px] text-zinc-400 block mb-1">Movie Title</label><input className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white text-sm" value={activePoster.title} onChange={(e) => onUpdatePoster(activePoster.id, { title: e.target.value })} /></div>
+                      <div><label className="text-[10px] text-zinc-400 block mb-1">Tagline</label><input className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white text-sm" value={activePoster.tagline} onChange={(e) => onUpdatePoster(activePoster.id, { tagline: e.target.value })} /></div>
+                   </div>
+                   <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-lg space-y-3">
+                      <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wider">Art Direction</h4>
+                      {/* Composition */}
+                      <div>
+                        <label className="text-[10px] text-zinc-400 block mb-1">{t.posterComposition}</label>
+                        <select className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white text-xs" value={posterComposition} onChange={(e) => setPosterComposition(e.target.value)}>
+                           <option value="">Auto / Standard</option>
+                           {POSTER_COMPOSITIONS.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                      {/* Color Palette */}
+                      <div>
+                        <label className="text-[10px] text-zinc-400 block mb-1">{t.posterPalette}</label>
+                        <select className="w-full bg-zinc-900 border border-zinc-800 rounded p-2 text-white text-xs" value={posterPalette} onChange={(e) => setPosterPalette(e.target.value)}>
+                           <option value="">Auto / Standard</option>
+                           {COLOR_PALETTES.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      </div>
+                   </div>
+                   <div>
+                     <div className="flex justify-between items-end mb-1">
+                        <label className="text-xs text-zinc-500 uppercase font-bold block">Visual Prompt</label>
+                        {/* AUTO GENERATE BUTTON */}
+                        <button 
+                           onClick={handleAutoPosterPrompt} 
+                           disabled={isAssetGenerating}
+                           className="text-xs text-amber-500 hover:text-amber-400 flex items-center gap-1 transition-colors disabled:opacity-50"
+                        >
+                           <ICONS.Wand2 size={12}/> Auto-Generate from Script
+                        </button>
+                     </div>
+                     <textarea className="w-full h-24 bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-xs resize-none" value={activePoster.prompt} onChange={(e) => onUpdatePoster(activePoster.id, { prompt: e.target.value })} placeholder="Describe the imagery..." />
+                   </div>
+                   <Button className="w-full py-4 text-sm font-bold" variant="accent" onClick={() => {
+                      const finalPrompt = `Movie Poster Art. Title: "${activePoster.title}". ${activePoster.prompt}. Composition: ${posterComposition}. Colors: ${posterPalette}. High resolution, cinematic key art, textless --ar ${activePoster.aspectRatio.replace(':','-')}`;
+                      handleGenerateAssetImage(finalPrompt, 'POSTER', activePoster.id, activePoster.aspectRatio);
+                   }} isLoading={isAssetGenerating}>
+                      <ICONS.Wand2 size={16} className="mr-2"/> Generate Poster
+                   </Button>
+                 </div>
+               </div>
+             </>
+             ) : (
+                renderEmptyState(ICONS.Image, "Poster Loft", "Create high-concept key art for your film.", createNewPoster, "New Poster Project")
+             )
            )}
 
-           {activeTab === 'STORYBOARD' && activeScene && (
+           {activeTab === 'STORYBOARD' && (
+             activeScene ? (
                <div className="flex-1 flex h-full bg-zinc-950 overflow-hidden flex-row">
+                  {/* ... [Storyboard content same as before] ... */}
                   <div className="flex-1 flex flex-col min-w-0 bg-black/20">
+                     {/* ... (Keep Storyboard Content) ... */}
                      <div className="p-4 bg-zinc-900 border-b border-zinc-800 flex gap-4 items-start shrink-0">
                         <div className="flex-1 relative">
                            <textarea 
@@ -1079,11 +1921,11 @@ export const StudioView: React.FC<StudioViewProps> = ({
                      </div>
                   </div>
 
-                  {/* ... (Right Control Pane Preserved) ... */}
                   <div className="w-80 border-l border-zinc-800 bg-zinc-900 p-6 overflow-y-auto shrink-0 z-30 shadow-xl">
                      <h3 className="text-xs font-bold text-white mb-4 uppercase flex items-center gap-2">
                         <ICONS.Activity size={14} className="text-amber-500"/> Action Logic
                      </h3>
+                     
                      <div className="space-y-4">
                         <div>
                            <label className="text-[10px] text-zinc-500 uppercase font-bold mb-1 block">Scene Heading</label>
@@ -1101,7 +1943,51 @@ export const StudioView: React.FC<StudioViewProps> = ({
                              onChange={(e) => onUpdateScene(activeScene.id, { action: e.target.value })}
                            />
                         </div>
-                        {/* ... (Remaining control inputs for Shot Size etc preserved) ... */}
+
+                        {/* ... Casting ... */}
+                        <div className="border-t border-zinc-800 pt-4">
+                           <h4 className="text-[10px] text-zinc-500 uppercase font-bold mb-3 flex items-center gap-1"><ICONS.Users size={12}/> Casting / Actors</h4>
+                           <div className="space-y-3">
+                              <div>
+                                 <label className="text-[10px] text-zinc-600 block mb-1">Character 1</label>
+                                 <div className="flex gap-2">
+                                   <div className="w-8 h-8 rounded bg-zinc-800 border border-zinc-700 overflow-hidden shrink-0">
+                                      {project.characters?.find(c => c.id === activeScene.characterRef1Id)?.imageUrl ? (
+                                        <img src={project.characters.find(c => c.id === activeScene.characterRef1Id)!.imageUrl!} className="w-full h-full object-cover"/>
+                                      ) : <ICONS.User size={16} className="m-2 text-zinc-600"/>}
+                                   </div>
+                                   <select 
+                                      className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-xs"
+                                      value={activeScene.characterRef1Id || ''}
+                                      onChange={(e) => onUpdateScene(activeScene.id, { characterRef1Id: e.target.value })}
+                                   >
+                                      <option value="">None</option>
+                                      {project.characters?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                   </select>
+                                 </div>
+                              </div>
+                              <div>
+                                 <label className="text-[10px] text-zinc-600 block mb-1">Character 2</label>
+                                 <div className="flex gap-2">
+                                   <div className="w-8 h-8 rounded bg-zinc-800 border border-zinc-700 overflow-hidden shrink-0">
+                                      {project.characters?.find(c => c.id === activeScene.characterRef2Id)?.imageUrl ? (
+                                        <img src={project.characters.find(c => c.id === activeScene.characterRef2Id)!.imageUrl!} className="w-full h-full object-cover"/>
+                                      ) : <ICONS.User size={16} className="m-2 text-zinc-600"/>}
+                                   </div>
+                                   <select 
+                                      className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-xs"
+                                      value={activeScene.characterRef2Id || ''}
+                                      onChange={(e) => onUpdateScene(activeScene.id, { characterRef2Id: e.target.value })}
+                                   >
+                                      <option value="">None</option>
+                                      {project.characters?.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                                   </select>
+                                 </div>
+                              </div>
+                           </div>
+                        </div>
+                        
+                        {/* ... Camera Logic ... */}
                         <div className="border-t border-zinc-800 pt-4">
                             <h4 className="text-[10px] text-zinc-500 uppercase font-bold mb-3 flex items-center gap-1"><ICONS.Camera size={12}/> Camera Logic</h4>
                             
@@ -1138,9 +2024,293 @@ export const StudioView: React.FC<StudioViewProps> = ({
                                 </div>
                             </div>
                         </div>
+
+                        {/* ... Visual Style ... */}
+                        <div className="border-t border-zinc-800 pt-4">
+                           <label className="text-[10px] text-zinc-500 uppercase font-bold mb-2 block">Image Style</label>
+                           <select 
+                             className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-xs mb-2"
+                             value={activeScene.imageStyle || ''}
+                             onChange={(e) => onUpdateScene(activeScene.id, { imageStyle: e.target.value })}
+                           >
+                              <option value="">Select Style...</option>
+                              {STORYBOARD_STYLES.map(s => <option key={s} value={s}>{s}</option>)}
+                              <option value="Custom">Custom / Other</option>
+                           </select>
+                           {activeScene.imageStyle === 'Custom' && (
+                             <input 
+                               className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-xs"
+                               placeholder="Type custom style..."
+                               onChange={(e) => onUpdateScene(activeScene.id, { imageStyle: e.target.value })}
+                             />
+                           )}
+                        </div>
+                        
+                        <div className="border-t border-zinc-800 pt-4">
+                           <label className="text-[10px] text-zinc-500 uppercase font-bold mb-2 block">Color Grading / Mood</label>
+                           <select 
+                             className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-xs mb-2"
+                             value={activeScene.colorGrade || ''}
+                             onChange={(e) => onUpdateScene(activeScene.id, { colorGrade: e.target.value })}
+                           >
+                              <option value="">Select Look...</option>
+                              {VISUAL_STYLES.map(v => <option key={v} value={v}>{v}</option>)}
+                              <option value="Custom">Custom / Other</option>
+                           </select>
+                           {activeScene.colorGrade === 'Custom' && (
+                             <input 
+                               className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-white text-xs"
+                               placeholder="Type custom grading..."
+                               onChange={(e) => onUpdateScene(activeScene.id, { colorGrade: e.target.value })}
+                             />
+                           )}
+                        </div>
+                        
+                        {/* Camera Guides Grid (Already implemented) */}
+                        <div className="mt-6 border-t border-zinc-800 pt-6">
+                         <h3 className="text-xs font-bold text-zinc-500 uppercase mb-3 flex items-center gap-2">
+                           <ICONS.Camera size={14} className="text-blue-500"/> Visual Shot Guide
+                         </h3>
+                         <div className="grid grid-cols-3 gap-2">
+                            {[
+                               { label: 'XCU', id: 'XCU', type: 'shotSize', icon: ICONS.Eye },
+                               { label: 'CU', id: 'CU', type: 'shotSize', icon: ICONS.User },
+                               { label: 'MCU', id: 'MCU', type: 'shotSize', icon: ICONS.User, iconScale: 0.8 },
+                               { label: 'LOW', id: 'LOW', type: 'cameraAngle', icon: ICONS.ArrowUp },
+                               { label: 'EYE', id: 'EYE', type: 'cameraAngle', icon: ICONS.Eye },
+                               { label: 'HIGH', id: 'HIGH', type: 'cameraAngle', icon: ICONS.ArrowUp, rotate: 180 },
+                               { label: 'WIDE', id: 'WIDE', type: 'shotSize', icon: ICONS.Grid },
+                               { label: '2-SHOT', id: '2-SHOT', type: 'shotSize', icon: ICONS.Users },
+                               { label: 'OTS', id: 'OTS', type: 'shotSize', icon: ICONS.User, special: 'ots' },
+                               { label: 'DUTCH', id: 'DUTCH', type: 'cameraAngle', icon: ICONS.Video, rotate: 12 },
+                               { label: 'BIRD', id: 'OVERHEAD', type: 'cameraAngle', icon: ICONS.Aperture },
+                               { label: 'POV', id: 'POV', type: 'cameraAngle', icon: ICONS.Maximize2 }
+                            ].map((btn) => (
+                               <button
+                                 key={btn.label}
+                                 onClick={() => onUpdateScene(activeScene.id, { [btn.type]: btn.id })}
+                                 className={`
+                                   p-3 rounded-lg border flex flex-col items-center justify-center gap-2 transition-all group
+                                   ${(activeScene as any)[btn.type] === btn.id 
+                                      ? 'bg-amber-900/40 border-amber-600 text-white shadow-[0_0_10px_rgba(245,158,11,0.2)]' 
+                                      : 'bg-zinc-900 border-zinc-800 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-300 hover:border-zinc-700'
+                                   }
+                                 `}
+                               >
+                                  <div className={`transition-transform ${btn.rotate ? `rotate-${btn.rotate}` : ''}`}>
+                                     {btn.special === 'ots' ? (
+                                        <div className="relative">
+                                           <ICONS.User size={20} className="opacity-40"/>
+                                           <ICONS.User size={14} className="absolute -bottom-1 -right-1"/>
+                                        </div>
+                                     ) : (
+                                        <btn.icon size={20} className={btn.iconScale ? 'scale-75' : ''}/>
+                                     )}
+                                  </div>
+                                  <span className="text-[10px] font-bold tracking-wider">{btn.label}</span>
+                               </button>
+                            ))}
+                         </div>
+                        </div>
                      </div>
                   </div>
                </div>
+             ) : (
+                renderEmptyState(ICONS.Clapperboard, "Storyboard Studio", "Select a shot from the timeline sidebar to edit technical details.", onGenerateNextScene, "Create First Shot")
+             )
+           )}
+
+           {/* --- RESTORED LOCATION SCOUT SECTION --- */}
+           {activeTab === 'LOCATION' && (
+              <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-hidden">
+                 <div className="p-6 border-b border-zinc-800 bg-zinc-900/50">
+                    <div className="max-w-4xl mx-auto flex gap-4 items-end">
+                       <div className="flex-1">
+                          <label className="text-xs font-bold text-zinc-500 uppercase mb-2 block">Scene Requirement</label>
+                          <input 
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-white text-sm"
+                            placeholder="e.g. A misty, abandoned railway bridge surrounded by dense jungle."
+                            value={locationQuery}
+                            onChange={(e) => setLocationQuery(e.target.value)}
+                          />
+                       </div>
+                       <div className="w-64">
+                          <label className="text-xs font-bold text-zinc-500 uppercase mb-2 block">Target Region</label>
+                          <input 
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-white text-sm"
+                            placeholder="e.g. Kerala, India"
+                            value={locationRegion}
+                            onChange={(e) => setLocationRegion(e.target.value)}
+                          />
+                       </div>
+                       <Button variant="accent" className="h-[46px] px-6 bg-teal-600 hover:bg-teal-500" onClick={handleFindLocations} isLoading={isScouting}>
+                          <ICONS.MapPin size={18} className="mr-2"/> Scout Locations
+                       </Button>
+                    </div>
+                 </div>
+                 
+                 <div className="flex-1 overflow-y-auto p-8">
+                    <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                       {scoutedLocations.map((loc) => (
+                          <div key={loc.id} className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden group hover:border-teal-500/50 transition-all">
+                             <div className="aspect-video bg-black relative">
+                                {loc.imageUrl ? (
+                                   <img src={loc.imageUrl} className="w-full h-full object-cover"/>
+                                ) : (
+                                   <div className="w-full h-full flex items-center justify-center flex-col text-zinc-700">
+                                      <ICONS.Image size={32} className="mb-2 opacity-50"/>
+                                      <span className="text-xs uppercase font-bold tracking-widest">No Visual Yet</span>
+                                   </div>
+                                )}
+                                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                   <Button variant="secondary" className="text-xs" onClick={() => handleVisualizeLocation(loc)} isLoading={isScouting}>
+                                      <ICONS.Wand2 size={14} className="mr-2"/> Visualize Scene Here
+                                   </Button>
+                                </div>
+                             </div>
+                             <div className="p-5">
+                                <div className="flex justify-between items-start mb-2">
+                                   <h3 className="font-bold text-white text-lg leading-tight">{loc.name}</h3>
+                                   <a 
+                                     href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(loc.name + " " + (loc.coordinates || ""))}`} 
+                                     target="_blank" 
+                                     rel="noreferrer"
+                                     className="text-teal-500 hover:text-white transition-colors"
+                                     title="View on Google Maps"
+                                   >
+                                      <ICONS.ExternalLink size={16}/>
+                                   </a>
+                                </div>
+                                <p className="text-xs text-zinc-400 mb-4 line-clamp-3">{loc.description}</p>
+                                
+                                <div className="p-3 bg-zinc-950 rounded border border-zinc-800">
+                                   <p className="text-[10px] text-zinc-500 uppercase font-bold mb-1">Scout Analysis</p>
+                                   <p className="text-xs text-zinc-300 italic">"{loc.suitability}"</p>
+                                </div>
+                             </div>
+                          </div>
+                       ))}
+                       {scoutedLocations.length === 0 && !isScouting && (
+                          <div className="col-span-full text-center py-20 text-zinc-600">
+                             <ICONS.Globe size={64} className="mx-auto mb-4 opacity-30"/>
+                             <h3 className="text-xl font-bold text-zinc-400">Global Location Database</h3>
+                             <p className="text-sm max-w-md mx-auto mt-2">Enter your scene requirements above to find real-world filming locations that match your vision.</p>
+                          </div>
+                       )}
+                    </div>
+                 </div>
+              </div>
+           )}
+
+           {/* --- RESTORED AUDIO SECTION (MAIN VIEW) --- */}
+           {activeTab === 'AUDIO' && (
+             <div className="flex-1 bg-zinc-950 p-8 overflow-y-auto">
+                <h3 className="text-xl font-bold text-white mb-6 cinematic-font">Audio Assets</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {project.audioAssets?.map((audio) => (
+                    <div key={audio.id} className="bg-zinc-900 border border-zinc-800 p-4 rounded-lg flex items-center gap-4">
+                       <button 
+                         className="w-12 h-12 rounded-full bg-amber-600 flex items-center justify-center text-white hover:bg-amber-500 transition-colors"
+                         onClick={() => { const a = new Audio(audio.audioUrl); a.play(); }}
+                       >
+                          <ICONS.Play size={20} fill="currentColor" />
+                       </button>
+                       <div className="flex-1 min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{audio.text}</p>
+                          <p className="text-xs text-zinc-500">{audio.voice}</p>
+                       </div>
+                       <a href={audio.audioUrl} download={`audio-${audio.id}.wav`} className="text-zinc-500 hover:text-white"><ICONS.Upload size={16} className="rotate-180"/></a>
+                    </div>
+                  ))}
+                  {(!project.audioAssets || project.audioAssets.length === 0) && (
+                    <div className="col-span-full text-center text-zinc-600 py-12">
+                      <ICONS.Mic size={48} className="mx-auto mb-2 opacity-50"/>
+                      <p>No audio clips generated yet.</p>
+                    </div>
+                  )}
+                </div>
+             </div>
+           )}
+
+           {/* --- RESTORED TRAILER SECTION --- */}
+           {activeTab === 'TRAILER' && (
+             <div className="flex-1 flex flex-col h-full bg-zinc-950 overflow-hidden">
+                <div className="p-6 border-b border-zinc-800 bg-zinc-900/50">
+                    <div className="max-w-4xl mx-auto flex gap-4 items-end">
+                       <div className="flex-1">
+                          <label className="text-xs font-bold text-zinc-500 uppercase mb-2 block">Video Prompt</label>
+                          <input 
+                            className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-3 text-white text-sm"
+                            placeholder="Describe the motion, subject, and style for the video clip..."
+                            value={videoPrompt}
+                            onChange={(e) => setVideoPrompt(e.target.value)}
+                          />
+                       </div>
+                       <Button variant="accent" className="h-[46px] px-6 bg-red-600 hover:bg-red-500" onClick={handleGenerateVideo} isLoading={isGeneratingVideo}>
+                          <ICONS.Video size={18} className="mr-2"/> Generate with Veo
+                       </Button>
+                    </div>
+                 </div>
+                 
+                 <div className="flex-1 overflow-y-auto p-8">
+                    <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                       
+                       {/* Upload Card */}
+                       <label className="border-2 border-dashed border-zinc-800 rounded-xl bg-zinc-900/50 hover:bg-zinc-900 hover:border-zinc-700 transition-all cursor-pointer flex flex-col items-center justify-center min-h-[200px] text-zinc-600 hover:text-white group">
+                          <ICONS.Upload size={48} className="mb-4 group-hover:scale-110 transition-transform text-zinc-700 group-hover:text-zinc-500"/>
+                          <h3 className="font-bold">Upload Video</h3>
+                          <p className="text-xs mt-1 opacity-50">MP4, WebM (Max 50MB)</p>
+                          <input type="file" accept="video/*" className="hidden" onChange={handleVideoUpload} />
+                       </label>
+
+                       {/* Video Cards */}
+                       {project.videos?.map((video) => (
+                          <div 
+                             key={video.id} 
+                             onClick={() => setPlayingVideo(video)}
+                             className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden group hover:border-red-600/50 transition-all cursor-pointer relative"
+                          >
+                             {/* Delete Button Overlay */}
+                             {onDeleteVideo && (
+                                <button 
+                                   onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (window.confirm("Are you sure you want to delete this video?")) {
+                                         onDeleteVideo(video.id);
+                                      }
+                                   }}
+                                   className="absolute top-2 right-2 z-20 p-2 bg-red-600 hover:bg-red-500 text-white rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                                   title="Delete Video"
+                                >
+                                   <ICONS.Trash2 size={14}/>
+                                </button>
+                             )}
+
+                             <div className="aspect-video bg-black relative">
+                                <video 
+                                   src={video.url + "#t=0.5"} 
+                                   className="w-full h-full object-cover pointer-events-none"
+                                   muted
+                                   preload="metadata"
+                                />
+                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                   <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center text-white">
+                                      <ICONS.Play size={24} fill="currentColor" />
+                                   </div>
+                                </div>
+                                {video.source === 'AI' && (
+                                   <div className="absolute top-2 left-2 px-2 py-0.5 bg-red-600 text-white text-[9px] font-bold rounded uppercase tracking-wider">Veo AI</div>
+                                )}
+                             </div>
+                             <div className="p-4">
+                                <h3 className="font-bold text-white text-sm truncate">{video.title}</h3>
+                                <p className="text-xs text-zinc-500 mt-1">{new Date(video.createdAt).toLocaleDateString()}</p>
+                             </div>
+                          </div>
+                       ))}
+                    </div>
+                 </div>
+             </div>
            )}
 
         </main>
